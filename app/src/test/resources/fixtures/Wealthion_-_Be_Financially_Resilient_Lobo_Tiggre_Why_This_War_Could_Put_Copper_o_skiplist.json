@@ -1,0 +1,25 @@
+{
+  "source": "transcripts/Wealthion_-_Be_Financially_Resilient_Lobo_Tiggre_Why_This_War_Could_Put_Copper_o_whisper.json",
+  "totalDuration": 522.0,
+  "adBlocks": [
+    {
+      "start": 0.0,
+      "end": 60.0,
+      "reason": "\"brought to you by\"; spoken-url: \"Indeed.com slash podcast\"; \"terms and conditions\"; \"now streaming on\"; \"rated pg\"",
+      "segments": [
+        0,
+        6,
+        7,
+        10,
+        19
+      ]
+    }
+  ],
+  "contentRanges": [
+    {
+      "start": 60.0,
+      "end": 522.0
+    }
+  ],
+  "adTimeSaved": 60.0
+}

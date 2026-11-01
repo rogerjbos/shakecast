@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Play triangle with motion lines: shake to skip -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M42,32 L72,54 L42,76 Z" />
+    <path
+        android:fillColor="#FFB74D"
+        android:pathData="M26,40 h8 v4 h-8 Z M22,52 h12 v4 h-12 Z M26,64 h8 v4 h-8 Z" />
+</vector>

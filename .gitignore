@@ -1,0 +1,15 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build/
+/app/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+
+# Whisper transcripts of real episodes (third-party content, kept local only)
+app/src/test/resources/fixtures/*_whisper.json

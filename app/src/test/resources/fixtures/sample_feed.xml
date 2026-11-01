@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"
+     xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"
+     xmlns:podcast="https://podcastindex.org/namespace/1.0"
+     xmlns:media="http://search.yahoo.com/mrss/"
+     xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Sample Markets Show</title>
+    <atom:link href="https://example.com/feed.xml" rel="self" type="application/rss+xml"/>
+    <description><![CDATA[<p>Weekly <b>markets</b> talk.</p>]]></description>
+    <itunes:author>Sample Host</itunes:author>
+    <itunes:summary>Short summary.</itunes:summary>
+    <itunes:image href="https://example.com/art.jpg"/>
+    <image><url>https://example.com/old-art.jpg</url><title>x</title><link>https://example.com</link></image>
+    <item>
+      <title>Episode 2: Rates</title>
+      <guid isPermaLink="false">ep-2</guid>
+      <pubDate>Tue, 05 Nov 2024 10:00:00 +0000</pubDate>
+      <description><![CDATA[Second episode]]></description>
+      <itunes:duration>1:02:03</itunes:duration>
+      <enclosure url="https://cdn.example.com/ep2.mp3" length="12345" type="audio/mpeg"/>
+      <podcast:transcript url="https://example.com/ep2.srt" type="application/x-subrip"/>
+      <podcast:transcript url="https://example.com/ep2.json" type="application/json"/>
+      <podcast:transcript url="https://example.com/ep2.vtt" type="text/vtt"/>
+    </item>
+    <item>
+      <title>Episode 1: Gold</title>
+      <pubDate>Mon, 28 Oct 2024 09:30:00 GMT</pubDate>
+      <itunes:summary>First episode</itunes:summary>
+      <itunes:duration>3723</itunes:duration>
+      <media:content url="https://cdn.example.com/ep1.mp3" type="audio/mpeg"/>
+    </item>
+    <item>
+      <title>Video only</title>
+      <guid>v-1</guid>
+      <pubDate>Mon, 21 Oct 2024 09:30:00 +0000</pubDate>
+    </item>
+  </channel>
+</rss>

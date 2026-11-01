@@ -1,0 +1,25 @@
+{
+  "source": "transcripts/Wealthion_-_Be_Financially_Resilient_Jacob_Shapiro_The_Iran_War_Gives_Putin_a_Li_whisper.json",
+  "totalDuration": 625.5200000000001,
+  "adBlocks": [
+    {
+      "start": 0.0,
+      "end": 109.52,
+      "reason": "\"brought to you by\"; spoken-url: \"indeed.com slash podcast\"; \"terms and conditions\"; gap-fill; spoken-url: \"WestHome.com slash May\"; spelled-url: \"W-E-S-T-H-O-L-M-E dot com\"",
+      "segments": [
+        0,
+        8,
+        9,
+        27,
+        29
+      ]
+    }
+  ],
+  "contentRanges": [
+    {
+      "start": 109.52,
+      "end": 625.5200000000001
+    }
+  ],
+  "adTimeSaved": 109.52
+}

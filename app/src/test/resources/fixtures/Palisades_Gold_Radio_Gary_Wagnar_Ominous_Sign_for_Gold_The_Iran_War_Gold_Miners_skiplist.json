@@ -1,0 +1,84 @@
+{
+  "source": "transcripts/Palisades_Gold_Radio_Gary_Wagnar_Ominous_Sign_for_Gold_The_Iran_War_Gold_Miners_whisper.json",
+  "totalDuration": 3379.36,
+  "adBlocks": [
+    {
+      "start": 21.28,
+      "end": 30.080000000000002,
+      "reason": "url: \"thegoldforecast.com\"",
+      "segments": [
+        5
+      ]
+    },
+    {
+      "start": 553.44,
+      "end": 610.08,
+      "reason": "\"brought to you by\"; gap-fill; url: \"palisades.ca\"; \"back to the show\"",
+      "segments": [
+        105,
+        116,
+        118
+      ]
+    },
+    {
+      "start": 1197.76,
+      "end": 1213.28,
+      "reason": "url: \"palisades.ca\"; \"back to the show\"",
+      "segments": [
+        230,
+        231
+      ]
+    },
+    {
+      "start": 2740.7200000000003,
+      "end": 2748.0,
+      "reason": "url: \"thegoldforecast.com\"",
+      "segments": [
+        413
+      ]
+    },
+    {
+      "start": 3094.48,
+      "end": 3105.2000000000003,
+      "reason": "url: \"thegoldforecast.com\"",
+      "segments": [
+        455
+      ]
+    },
+    {
+      "start": 3371.7599999999998,
+      "end": 3379.36,
+      "reason": "url: \"cedarplus.ca\"",
+      "segments": [
+        495
+      ]
+    }
+  ],
+  "contentRanges": [
+    {
+      "start": 0.0,
+      "end": 21.28
+    },
+    {
+      "start": 30.080000000000002,
+      "end": 553.44
+    },
+    {
+      "start": 610.08,
+      "end": 1197.76
+    },
+    {
+      "start": 1213.28,
+      "end": 2740.7200000000003
+    },
+    {
+      "start": 2748.0,
+      "end": 3094.48
+    },
+    {
+      "start": 3105.2000000000003,
+      "end": 3371.7599999999998
+    }
+  ],
+  "adTimeSaved": 106.56000000000033
+}

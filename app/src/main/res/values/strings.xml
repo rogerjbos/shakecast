@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Shakecast</string>
+    <string name="notification_channel_playback">Playback</string>
+    <string name="skip_back_label">Back %1$d s</string>
+    <string name="skip_forward_label">Skip %1$d s</string>
+    <string name="ad_skipped_toast">Skipped a %1$d s ad</string>
+
+    <string name="nav_home">Home</string>
+    <string name="nav_search">Search</string>
+    <string name="nav_settings">Settings</string>
+
+    <string name="cd_play">Play</string>
+    <string name="cd_pause">Pause</string>
+    <string name="cd_skip_forward">Skip forward</string>
+    <string name="cd_back">Back</string>
+    <string name="cd_more">More</string>
+    <string name="cd_played">Played</string>
+    <string name="cd_downloaded">Downloaded</string>
+    <string name="cd_download">Download</string>
+    <string name="cd_download_failed">Download failed, tap to retry</string>
+    <string name="cancel">Cancel</string>
+
+    <string name="home_up_next">Up next</string>
+    <string name="home_empty_title">No subscriptions yet</string>
+    <string name="home_empty_body">Search for a show to subscribe. The latest episodes download automatically on Wi-Fi.</string>
+    <string name="home_find_podcasts">Find podcasts</string>
+
+    <string name="search_title">Search</string>
+    <string name="search_hint">Podcast name</string>
+    <string name="search_subscribe">Subscribe</string>
+    <string name="search_subscribed">Subscribed</string>
+    <string name="search_error">Search failed: %1$s</string>
+
+    <string name="podcast_unsubscribe">Unsubscribe</string>
+    <string name="podcast_unsubscribe_body">Downloaded episodes of this show will be deleted.</string>
+    <string name="podcast_auto_skip_ads">Auto-skip ads for this show</string>
+    <string name="podcast_auto_download">Auto-download new episodes</string>
+    <string name="episode_mark_played">Mark as played</string>
+    <string name="episode_mark_unplayed">Mark as unplayed</string>
+    <string name="episode_delete_download">Delete download</string>
+    <string name="episode_download_now">Download now</string>
+
+    <string name="ads_known">%1$d ads</string>
+    <string name="ads_misaligned">Ads: dynamic, markers off</string>
+    <string name="ads_unknown">Ads: unknown</string>
+
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_skipping">Skipping</string>
+    <string name="settings_skip_forward">Skip forward (seconds)</string>
+    <string name="settings_skip_back">Skip back (seconds)</string>
+    <string name="settings_shake_enabled">Shake to skip forward</string>
+    <string name="settings_shake_sensitivity">Shake sensitivity</string>
+    <string name="settings_shake_high_warning">High may trigger while running.</string>
+    <string name="settings_shake_test_start">Test shake</string>
+    <string name="settings_shake_test_stop">Stop test</string>
+    <string name="settings_shake_test_readout">%1$s g · peaks %2$d · shakes %3$d</string>
+    <string name="sensitivity_low">Hard</string>
+    <string name="sensitivity_medium">Normal</string>
+    <string name="sensitivity_high">Easy</string>
+    <string name="settings_volume_chord">Volume-key chord</string>
+    <string name="settings_volume_chord_help">While playing: volume up then down within half a second skips forward, down then up skips back. Works with the screen off while Shakecast is the active media app. The system volume panel shows a generic slider when this is on.</string>
+    <string name="settings_haptics">Vibrate on skip</string>
+    <string name="settings_section_ads">Ads</string>
+    <string name="settings_auto_skip_ads">Auto-skip detected ads</string>
+    <string name="settings_skiplist_url">Skip-list server (your Mac)</string>
+    <string name="settings_skiplist_url_hint">http://192.168.1.20:8787</string>
+    <string name="settings_test_connection">Test connection</string>
+    <string name="settings_section_downloads">Downloads</string>
+    <string name="settings_wifi_only">Download on Wi-Fi only</string>
+    <string name="settings_keep_per_show">Episodes to keep per show</string>
+    <string name="settings_auto_delete">Delete when played</string>
+    <string name="settings_refresh_interval">Refresh every (hours)</string>
+    <string name="settings_refresh_now">Refresh now</string>
+</resources>

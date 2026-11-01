@@ -1,0 +1,142 @@
+{
+  "source": "transcripts/Thoughtful_Money_with_Adam_Taggart_The_Market_Just_Broke_Below_A_Critical_Suppor_whisper.json",
+  "totalDuration": 4656.6,
+  "adBlocks": [
+    {
+      "start": 0.0,
+      "end": 78.96000000000001,
+      "reason": "pre-roll (intro: \"welcome to\"); url: \"KubotaUSA.com\"; spoken-url: \"KubotaUSA.com slash disclaimers\"",
+      "segments": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ]
+    },
+    {
+      "start": 237.16,
+      "end": 243.68,
+      "reason": "spoken-url: \"thotphilmoney.com slash conference\"",
+      "segments": [
+        73
+      ]
+    },
+    {
+      "start": 1814.28,
+      "end": 1821.9599999999998,
+      "reason": "url: \"realinvestmentadvice.com\"",
+      "segments": [
+        584
+      ]
+    },
+    {
+      "start": 2037.12,
+      "end": 2098.32,
+      "reason": "\"brought to you by\"; gap-fill; spoken-url: \"indeed.com slash podcast\"; \"terms and conditions\"; \"now streaming on\"; \"rated pg\"",
+      "segments": [
+        672,
+        675,
+        683,
+        664,
+        671
+      ]
+    },
+    {
+      "start": 2304.0800000000004,
+      "end": 2312.2000000000003,
+      "reason": "url: \"the.com\"",
+      "segments": [
+        753
+      ]
+    },
+    {
+      "start": 3111.32,
+      "end": 3118.76,
+      "reason": "\"get 10%\"",
+      "segments": [
+        1033
+      ]
+    },
+    {
+      "start": 3342.7200000000003,
+      "end": 3349.2400000000002,
+      "reason": "spoken-url: \"Adobe.com slash do\"",
+      "segments": [
+        1099
+      ]
+    },
+    {
+      "start": 4388.2,
+      "end": 4397.56,
+      "reason": "\"sponsored by\"",
+      "segments": [
+        1324
+      ]
+    },
+    {
+      "start": 4589.08,
+      "end": 4634.12,
+      "reason": "url: \"thoughtfulmoney.com\"; spoken-url: \"thoughtfulmoney.com slash conference\"; url: \"realinvestmentadvice.com\"",
+      "segments": [
+        1363,
+        1355,
+        1359
+      ]
+    }
+  ],
+  "contentRanges": [
+    {
+      "start": 78.96000000000001,
+      "end": 237.16
+    },
+    {
+      "start": 243.68,
+      "end": 1814.28
+    },
+    {
+      "start": 1821.9599999999998,
+      "end": 2037.12
+    },
+    {
+      "start": 2098.32,
+      "end": 2304.0800000000004
+    },
+    {
+      "start": 2312.2000000000003,
+      "end": 3111.32
+    },
+    {
+      "start": 3118.76,
+      "end": 3342.7200000000003
+    },
+    {
+      "start": 3349.2400000000002,
+      "end": 4388.2
+    },
+    {
+      "start": 4397.56,
+      "end": 4589.08
+    },
+    {
+      "start": 4634.12,
+      "end": 4656.6
+    }
+  ],
+  "adTimeSaved": 230.8400000000006
+}

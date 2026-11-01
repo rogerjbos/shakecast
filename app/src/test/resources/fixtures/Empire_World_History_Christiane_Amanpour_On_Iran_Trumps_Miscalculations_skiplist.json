@@ -1,0 +1,42 @@
+{
+  "source": "transcripts/Empire_World_History_Christiane_Amanpour_On_Iran_Trumps_Miscalculations_whisper.json",
+  "totalDuration": 2107.56,
+  "adBlocks": [
+    {
+      "start": 0.0,
+      "end": 109.0,
+      "reason": "pre-roll (intro: \"hi everyone\"); \"bonus episodes\"; \"ad-free listening\"; \"sign up to empire club\"; url: \"betterhealth.com\"; \"% off\"; gap-fill; \"stream season\"; \"brought to you by\"; gap-fill; \"prescription only\"",
+      "segments": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        21,
+        23,
+        28
+      ]
+    },
+    {
+      "start": 2069.88,
+      "end": 2107.56,
+      "reason": "url: \"roku.com\"; \"terms apply\"; spoken-url: \"mintmobile.com slash switch\"",
+      "segments": [
+        376,
+        377,
+        375
+      ]
+    }
+  ],
+  "contentRanges": [
+    {
+      "start": 109.0,
+      "end": 2069.88
+    }
+  ],
+  "adTimeSaved": 146.67999999999984
+}
