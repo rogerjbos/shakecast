@@ -1,5 +1,6 @@
 package com.rogerbos.shakecast.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -18,5 +19,8 @@ data class PodcastEntity(
     val etag: String?,
     val lastModified: String?,
     val autoSkipAds: Boolean,
-    val autoDownload: Boolean
+    val autoDownload: Boolean,
+    /** Last local or remote change to the subscription itself, for last-writer-wins sync. */
+    @ColumnInfo(defaultValue = "0") val subscriptionUpdatedAtMs: Long = 0,
+    @ColumnInfo(defaultValue = "1") val syncDirty: Boolean = true
 )

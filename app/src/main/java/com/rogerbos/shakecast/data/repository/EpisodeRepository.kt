@@ -33,7 +33,7 @@ class EpisodeRepository @Inject constructor(
     suspend fun updatePosition(id: Long, positionMs: Long) =
         episodeDao.updatePosition(id, positionMs, System.currentTimeMillis())
 
-    suspend fun markUnplayed(id: Long) = episodeDao.markUnplayed(id)
+    suspend fun markUnplayed(id: Long) = episodeDao.markUnplayed(id, System.currentTimeMillis())
 
     suspend fun setAdBlocks(id: Long, source: AdSource, blocks: List<AdBlock>) =
         episodeDao.setAdBlocks(id, source, if (blocks.isEmpty()) null else json.encodeToString(blocks), System.currentTimeMillis())

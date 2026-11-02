@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -36,6 +37,12 @@ class SettingsRepository @Inject constructor(
         val autoDeleteWhenPlayed = booleanPreferencesKey("autoDeleteWhenPlayed")
         val refreshIntervalHours = intPreferencesKey("refreshIntervalHours")
         val skipListBaseUrl = stringPreferencesKey("skipListBaseUrl")
+        val syncEnabled = booleanPreferencesKey("syncEnabled")
+        val supabaseUrl = stringPreferencesKey("supabaseUrl")
+        val supabaseKey = stringPreferencesKey("supabaseKey")
+        val syncKey = stringPreferencesKey("syncKey")
+        val lastSyncAtMs = longPreferencesKey("lastSyncAtMs")
+        val lastSyncError = stringPreferencesKey("lastSyncError")
     }
 
     val settings: Flow<Settings> = context.settingsStore.data.map { p ->
@@ -53,8 +60,30 @@ class SettingsRepository @Inject constructor(
             episodesToKeepPerShow = p[Keys.episodesToKeepPerShow] ?: d.episodesToKeepPerShow,
             autoDeleteWhenPlayed = p[Keys.autoDeleteWhenPlayed] ?: d.autoDeleteWhenPlayed,
             refreshIntervalHours = p[Keys.refreshIntervalHours] ?: d.refreshIntervalHours,
-            skipListBaseUrl = p[Keys.skipListBaseUrl] ?: d.skipListBaseUrl
+            skipListBaseUrl = p[Keys.skipListBaseUrl] ?: d.skipListBaseUrl,
+            syncEnabled = p[Keys.syncEnabled] ?: d.syncEnabled,
+            supabaseUrl = p[Keys.supabaseUrl] ?: d.supabaseUrl,
+            supabaseKey = p[Keys.supabaseKey] ?: d.supabaseKey,
+            syncKey = p[Keys.syncKey] ?: d.syncKey
         )
+    }
+
+    /** Outcome of the most recent sync run; `error` is null after a success. */
+    data class SyncStatus(val lastSyncAtMs: Long?, val error: String?)
+
+    val syncStatus: Flow<SyncStatus> = context.settingsStore.data.map { p ->
+        SyncStatus(p[Keys.lastSyncAtMs], p[Keys.lastSyncError])
+    }
+
+    suspend fun recordSyncResult(error: String?) {
+        context.settingsStore.edit { p ->
+            if (error == null) {
+                p[Keys.lastSyncAtMs] = System.currentTimeMillis()
+                p.remove(Keys.lastSyncError)
+            } else {
+                p[Keys.lastSyncError] = error
+            }
+        }
     }
 
     suspend fun current(): Settings = settings.first()
@@ -75,6 +104,10 @@ class SettingsRepository @Inject constructor(
             p[Keys.autoDeleteWhenPlayed] = next.autoDeleteWhenPlayed
             p[Keys.refreshIntervalHours] = next.refreshIntervalHours
             p[Keys.skipListBaseUrl] = next.skipListBaseUrl
+            p[Keys.syncEnabled] = next.syncEnabled
+            p[Keys.supabaseUrl] = next.supabaseUrl
+            p[Keys.supabaseKey] = next.supabaseKey
+            p[Keys.syncKey] = next.syncKey
         }
     }
 }

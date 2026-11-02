@@ -5,9 +5,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rogerbos.shakecast.data.refresh.RefreshScheduler
 import com.rogerbos.shakecast.data.remote.skiplist.SkipListClient
+import com.rogerbos.shakecast.data.remote.sync.SupabaseConfig
+import com.rogerbos.shakecast.data.remote.sync.SupabaseSyncApi
 import com.rogerbos.shakecast.data.settings.Settings
 import com.rogerbos.shakecast.data.settings.SettingsRepository
 import com.rogerbos.shakecast.data.settings.ShakeSensitivity
+import com.rogerbos.shakecast.data.sync.SyncScheduler
 import com.rogerbos.shakecast.playback.AccelerometerSource
 import com.rogerbos.shakecast.playback.ShakeConfig
 import com.rogerbos.shakecast.playback.ShakeDetector
@@ -25,6 +28,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.UUID
 import javax.inject.Inject
 
 data class ShakeTestState(val active: Boolean, val magnitudeG: Float, val peaks: Int, val shakes: Int)
@@ -32,10 +36,15 @@ data class ShakeTestState(val active: Boolean, val magnitudeG: Float, val peaks:
 data class SettingsUiState(
     val settings: Settings,
     val shakeTest: ShakeTestState,
-    val connectionResult: String?
+    val connectionResult: String?,
+    val syncTestResult: String?,
+    val syncStatus: SettingsRepository.SyncStatus,
+    val syncing: Boolean
 ) {
     companion object {
-        val EMPTY = SettingsUiState(Settings.DEFAULT, ShakeTestState(false, 1f, 0, 0), null)
+        val EMPTY = SettingsUiState(
+            Settings.DEFAULT, ShakeTestState(false, 1f, 0, 0), null, null, SettingsRepository.SyncStatus(null, null), false
+        )
     }
 }
 
@@ -44,29 +53,69 @@ class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val settingsRepository: SettingsRepository,
     private val refreshScheduler: RefreshScheduler,
-    private val skipListClient: SkipListClient
+    private val skipListClient: SkipListClient,
+    private val syncScheduler: SyncScheduler,
+    private val syncApi: SupabaseSyncApi
 ) : ViewModel() {
 
     private val shakeTest = MutableStateFlow(ShakeTestState(false, 1f, 0, 0))
     private val connectionResult = MutableStateFlow<String?>(null)
+    private val syncTestResult = MutableStateFlow<String?>(null)
     private var detector: ShakeDetector? = null
     private var source: AccelerometerSource? = null
     private var pollJob: Job? = null
 
-    val state: StateFlow<SettingsUiState> = combine(settingsRepository.settings, shakeTest, connectionResult) { s, t, c ->
-        SettingsUiState(s, t, c)
+    val state: StateFlow<SettingsUiState> = combine(
+        settingsRepository.settings, shakeTest, connectionResult, syncTestResult,
+        settingsRepository.syncStatus, syncScheduler.isSyncing()
+    ) { values ->
+        @Suppress("UNCHECKED_CAST")
+        SettingsUiState(
+            settings = values[0] as Settings,
+            shakeTest = values[1] as ShakeTestState,
+            connectionResult = values[2] as String?,
+            syncTestResult = values[3] as String?,
+            syncStatus = values[4] as SettingsRepository.SyncStatus,
+            syncing = values[5] as Boolean
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState.EMPTY)
 
     fun update(transform: (Settings) -> Settings) {
         viewModelScope.launch {
+            val before = settingsRepository.current()
             settingsRepository.update(transform)
             val next = settingsRepository.current()
             detector?.config = configFor(next.shakeSensitivity)
             refreshScheduler.schedulePeriodic(next.refreshIntervalHours)
+            if (next.syncEnabled && !before.syncEnabled) {
+                syncScheduler.schedulePeriodic()
+                syncScheduler.enqueueNow()
+            } else if (!next.syncEnabled && before.syncEnabled) {
+                syncScheduler.cancelPeriodic()
+            }
         }
     }
 
     fun refreshNow() = refreshScheduler.enqueueNow()
+
+    fun syncNow() = syncScheduler.enqueueNow()
+
+    fun generateSyncKey() {
+        val key = "shakecast-" + UUID.randomUUID().toString().replace("-", "").take(10)
+        update { it.copy(syncKey = key) }
+    }
+
+    fun testSync() {
+        viewModelScope.launch {
+            val s = settingsRepository.current()
+            syncTestResult.value = withContext(Dispatchers.IO) {
+                syncApi.ping(SupabaseConfig(s.supabaseUrl, s.supabaseKey, s.syncKey)).fold(
+                    onSuccess = { it },
+                    onFailure = { it.message ?: it.javaClass.simpleName }
+                )
+            }
+        }
+    }
 
     fun testConnection() {
         viewModelScope.launch {

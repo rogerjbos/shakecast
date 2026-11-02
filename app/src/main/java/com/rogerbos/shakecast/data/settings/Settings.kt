@@ -19,7 +19,11 @@ data class Settings(
     val episodesToKeepPerShow: Int,
     val autoDeleteWhenPlayed: Boolean,
     val refreshIntervalHours: Int,
-    val skipListBaseUrl: String
+    val skipListBaseUrl: String,
+    val syncEnabled: Boolean,
+    val supabaseUrl: String,
+    val supabaseKey: String,
+    val syncKey: String
 ) {
     companion object {
         val DEFAULT = Settings(
@@ -35,7 +39,11 @@ data class Settings(
             episodesToKeepPerShow = 3,
             autoDeleteWhenPlayed = true,
             refreshIntervalHours = 3,
-            skipListBaseUrl = ""
+            skipListBaseUrl = "",
+            syncEnabled = false,
+            supabaseUrl = "",
+            supabaseKey = "",
+            syncKey = ""
         )
     }
 }

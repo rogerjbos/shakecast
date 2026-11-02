@@ -17,6 +17,7 @@ import androidx.core.content.ContextCompat
 import androidx.navigation.compose.rememberNavController
 import com.rogerbos.shakecast.data.refresh.RefreshScheduler
 import com.rogerbos.shakecast.data.settings.SettingsRepository
+import com.rogerbos.shakecast.data.sync.SyncScheduler
 import com.rogerbos.shakecast.playback.PlayerConnection
 import com.rogerbos.shakecast.ui.navigation.Route
 import com.rogerbos.shakecast.ui.navigation.ShakecastNavHost
@@ -36,6 +37,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var playerConnection: PlayerConnection
     @Inject lateinit var refreshScheduler: RefreshScheduler
     @Inject lateinit var settingsRepository: SettingsRepository
+    @Inject lateinit var syncScheduler: SyncScheduler
 
     private var openNowPlayingRequests by mutableIntStateOf(0)
 
@@ -45,7 +47,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         requestNotificationPermission()
-        lifecycleScope.launch { refreshScheduler.schedulePeriodic(settingsRepository.settings.first().refreshIntervalHours) }
+        lifecycleScope.launch {
+            val settings = settingsRepository.settings.first()
+            refreshScheduler.schedulePeriodic(settings.refreshIntervalHours)
+            if (settings.syncEnabled) syncScheduler.schedulePeriodic()
+        }
         if (intent?.action == ACTION_OPEN_NOW_PLAYING) openNowPlayingRequests++
 
         setContent {
@@ -67,6 +73,7 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         playerConnection.connect()
+        lifecycleScope.launch { if (settingsRepository.settings.first().syncEnabled) syncScheduler.enqueueNow() }
     }
 
     override fun onStop() {

@@ -22,6 +22,8 @@ import com.rogerbos.shakecast.data.repository.EpisodeRepository
 import com.rogerbos.shakecast.data.repository.PodcastRepository
 import com.rogerbos.shakecast.data.settings.Settings
 import com.rogerbos.shakecast.data.settings.SettingsRepository
+import com.rogerbos.shakecast.data.sync.SyncEngine
+import com.rogerbos.shakecast.data.sync.SyncScheduler
 import com.rogerbos.shakecast.domain.model.AdSource
 import com.rogerbos.shakecast.domain.usecase.MarkEpisodePlayed
 import com.rogerbos.shakecast.domain.usecase.ResolveAdBlocks
@@ -36,6 +38,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
+import kotlin.math.abs
 
 @UnstableApi
 @AndroidEntryPoint
@@ -48,6 +51,8 @@ class PlaybackService : MediaSessionService() {
     @Inject lateinit var resolveAdBlocks: ResolveAdBlocks
     @Inject lateinit var mediaItemFactory: MediaItemFactory
     @Inject lateinit var haptics: Haptics
+    @Inject lateinit var syncScheduler: SyncScheduler
+    @Inject lateinit var syncEngine: SyncEngine
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val handler = Handler(Looper.getMainLooper())
@@ -149,12 +154,25 @@ class PlaybackService : MediaSessionService() {
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 if (isPlaying && settings.shakeEnabled) accelerometer.start() else accelerometer.stop()
+                if (!isPlaying) syncScheduler.enqueueSoon()
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 loadBlocksFor(mediaItem?.mediaId)
+                syncScheduler.enqueueSoon()
             }
         })
+
+        scope.launch {
+            syncEngine.remotePositions.collect { remote ->
+                val currentId = mediaItemFactory.episodeId(player.currentMediaItem?.mediaId)
+                if (currentId != remote.episodeId || player.isPlaying) return@collect
+                if (abs(player.currentPosition - remote.positionMs) > REMOTE_SEEK_TOLERANCE_MS) {
+                    Timber.i("Moving to position from other device: %d ms", remote.positionMs)
+                    player.seekTo(remote.positionMs)
+                }
+            }
+        }
 
         scope.launch {
             settingsRepository.settings.collectLatest { applySettings(it) }
@@ -253,5 +271,9 @@ class PlaybackService : MediaSessionService() {
         player.release()
         scope.cancel()
         super.onDestroy()
+    }
+
+    private companion object {
+        const val REMOTE_SEEK_TOLERANCE_MS = 3_000L
     }
 }

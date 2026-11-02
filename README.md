@@ -24,6 +24,16 @@ Requires JDK 17 or 21 and Android SDK platform 36.
 ./gradlew testDebugUnitTest
 ```
 
+## Syncing between phones
+
+Subscriptions, play positions and played state can be kept in step across phones through a free [Supabase](https://supabase.com) project:
+
+1. Create a project, open the SQL editor and run `supabase/schema.sql`.
+2. In Settings > Sync on the first phone, enter the project URL (Project Settings > API) and the anon / publishable key, tap **Generate** for a sync key, and turn sync on.
+3. On every other phone enter the same URL, key and sync key.
+
+Each phone pushes its own changes and pulls the rest. Newer timestamps win, a played episode on one phone is deleted on the others, and a paused episode jumps to the position the other phone reached. Downloads stay per phone.
+
 ## Serving skip-lists from the Mac
 
 ```

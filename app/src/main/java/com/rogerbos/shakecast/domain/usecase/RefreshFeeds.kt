@@ -92,7 +92,9 @@ class RefreshFeeds @Inject constructor(
                 lastPlayedAt = null,
                 adSource = AdSource.NONE,
                 adBlocksJson = null,
-                adResolvedAt = null
+                adResolvedAt = null,
+                stateUpdatedAtMs = 0,
+                syncDirty = false
             )
         }
         episodeDao.upsertAll(entities)

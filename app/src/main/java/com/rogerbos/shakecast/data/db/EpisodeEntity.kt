@@ -1,5 +1,6 @@
 package com.rogerbos.shakecast.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -45,5 +46,8 @@ data class EpisodeEntity(
     val lastPlayedAt: Long?,
     val adSource: AdSource,
     val adBlocksJson: String?,
-    val adResolvedAt: Long?
+    val adResolvedAt: Long?,
+    /** Last change to positionMs/isPlayed, local or remote, for last-writer-wins sync. */
+    @ColumnInfo(defaultValue = "0") val stateUpdatedAtMs: Long = 0,
+    @ColumnInfo(defaultValue = "1") val syncDirty: Boolean = true
 )

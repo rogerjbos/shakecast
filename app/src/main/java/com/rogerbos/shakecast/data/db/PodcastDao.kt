@@ -44,4 +44,13 @@ interface PodcastDao {
 
     @Query("UPDATE podcasts SET autoDownload = :enabled WHERE id = :id")
     suspend fun setAutoDownload(id: Long, enabled: Boolean)
+
+    @Query("SELECT * FROM podcasts WHERE syncDirty = 1")
+    suspend fun dirty(): List<PodcastEntity>
+
+    @Query("UPDATE podcasts SET syncDirty = 0 WHERE id = :id AND subscriptionUpdatedAtMs <= :upToMs")
+    suspend fun clearDirty(id: Long, upToMs: Long)
+
+    @Query("UPDATE podcasts SET subscriptionUpdatedAtMs = :updatedAtMs, syncDirty = 0 WHERE id = :id AND subscriptionUpdatedAtMs < :updatedAtMs")
+    suspend fun applyRemoteSubscription(id: Long, updatedAtMs: Long)
 }

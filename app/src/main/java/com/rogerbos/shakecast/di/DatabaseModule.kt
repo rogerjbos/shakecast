@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.rogerbos.shakecast.data.db.EpisodeDao
 import com.rogerbos.shakecast.data.db.PodcastDao
 import com.rogerbos.shakecast.data.db.ShakecastDatabase
+import com.rogerbos.shakecast.data.db.SyncDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -27,4 +28,7 @@ object DatabaseModule {
 
     @Provides
     fun provideEpisodeDao(db: ShakecastDatabase): EpisodeDao = db.episodeDao()
+
+    @Provides
+    fun provideSyncDao(db: ShakecastDatabase): SyncDao = db.syncDao()
 }

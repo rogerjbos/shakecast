@@ -27,12 +27,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rogerbos.shakecast.R
+import com.rogerbos.shakecast.data.settings.SettingsRepository
 import com.rogerbos.shakecast.data.settings.ShakeSensitivity
+import kotlinx.coroutines.delay
+import android.text.format.DateFormat
+import java.util.Date
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -111,20 +116,11 @@ fun SettingsScreen(
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             SectionHeader(stringResource(R.string.settings_section_ads))
             SwitchRow(stringResource(R.string.settings_auto_skip_ads), s.autoSkipAdsEnabled) { v -> viewModel.update { it.copy(autoSkipAdsEnabled = v) } }
-            var baseUrl by remember(s.skipListBaseUrl) { mutableStateOf(s.skipListBaseUrl) }
-            LaunchedEffect(baseUrl) {
-                if (baseUrl != s.skipListBaseUrl) {
-                    kotlinx.coroutines.delay(600)
-                    viewModel.update { it.copy(skipListBaseUrl = baseUrl.trim()) }
-                }
-            }
-            OutlinedTextField(
-                value = baseUrl,
-                onValueChange = { baseUrl = it },
-                label = { Text(stringResource(R.string.settings_skiplist_url)) },
-                placeholder = { Text(stringResource(R.string.settings_skiplist_url_hint)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+            DebouncedTextField(
+                value = s.skipListBaseUrl,
+                label = stringResource(R.string.settings_skiplist_url),
+                placeholder = stringResource(R.string.settings_skiplist_url_hint),
+                onCommit = { v -> viewModel.update { it.copy(skipListBaseUrl = v) } }
             )
             Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 OutlinedButton(onClick = viewModel::testConnection, enabled = s.skipListBaseUrl.isNotBlank()) {
@@ -155,8 +151,82 @@ fun SettingsScreen(
             Button(onClick = viewModel::refreshNow, modifier = Modifier.padding(16.dp)) {
                 Text(stringResource(R.string.settings_refresh_now))
             }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            SectionHeader(stringResource(R.string.settings_section_sync))
+            Text(
+                stringResource(R.string.settings_sync_help),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+            SwitchRow(stringResource(R.string.settings_sync_enabled), s.syncEnabled) { v -> viewModel.update { it.copy(syncEnabled = v) } }
+            DebouncedTextField(
+                value = s.supabaseUrl,
+                label = stringResource(R.string.settings_supabase_url),
+                placeholder = stringResource(R.string.settings_supabase_url_hint),
+                onCommit = { v -> viewModel.update { it.copy(supabaseUrl = v) } }
+            )
+            DebouncedTextField(
+                value = s.supabaseKey,
+                label = stringResource(R.string.settings_supabase_key),
+                placeholder = stringResource(R.string.settings_supabase_key_hint),
+                onCommit = { v -> viewModel.update { it.copy(supabaseKey = v) } }
+            )
+            DebouncedTextField(
+                value = s.syncKey,
+                label = stringResource(R.string.settings_sync_key),
+                placeholder = stringResource(R.string.settings_sync_key_hint),
+                onCommit = { v -> viewModel.update { it.copy(syncKey = v) } }
+            )
+            Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedButton(onClick = viewModel::generateSyncKey) { Text(stringResource(R.string.settings_sync_key_generate)) }
+                Spacer(Modifier.width(12.dp))
+                OutlinedButton(onClick = viewModel::testSync, enabled = s.supabaseUrl.isNotBlank() && s.supabaseKey.isNotBlank()) {
+                    Text(stringResource(R.string.settings_test_connection))
+                }
+                Spacer(Modifier.width(12.dp))
+                state.syncTestResult?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+            }
+            Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Button(onClick = viewModel::syncNow, enabled = s.syncEnabled && !state.syncing) {
+                    Text(stringResource(if (state.syncing) R.string.settings_syncing else R.string.settings_sync_now))
+                }
+                Spacer(Modifier.width(16.dp))
+                Text(syncStatusText(state.syncStatus), style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
+}
+
+@Composable
+private fun syncStatusText(status: SettingsRepository.SyncStatus): String = when {
+    status.error != null -> stringResource(R.string.settings_sync_status_error, status.error)
+    status.lastSyncAtMs != null -> stringResource(
+        R.string.settings_sync_status_ok,
+        DateFormat.getTimeFormat(LocalContext.current).format(Date(status.lastSyncAtMs))
+    )
+    else -> stringResource(R.string.settings_sync_status_never)
+}
+
+/** Text field that writes the trimmed value to settings 600 ms after typing stops. */
+@Composable
+private fun DebouncedTextField(value: String, label: String, placeholder: String, onCommit: (String) -> Unit) {
+    var text by remember(value) { mutableStateOf(value) }
+    LaunchedEffect(text) {
+        if (text.trim() != value) {
+            delay(600)
+            onCommit(text.trim())
+        }
+    }
+    OutlinedTextField(
+        value = text,
+        onValueChange = { text = it },
+        label = { Text(label) },
+        placeholder = { Text(placeholder) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+    )
 }
 
 @Composable

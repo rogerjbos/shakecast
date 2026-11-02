@@ -79,14 +79,33 @@ interface EpisodeDao {
     @Query("SELECT * FROM episodes WHERE downloadState = 'DOWNLOADED'")
     suspend fun allDownloaded(): List<EpisodeEntity>
 
-    @Query("UPDATE episodes SET positionMs = :positionMs, lastPlayedAt = :at WHERE id = :id")
+    @Query("UPDATE episodes SET positionMs = :positionMs, lastPlayedAt = :at, stateUpdatedAtMs = :at, syncDirty = 1 WHERE id = :id")
     suspend fun updatePosition(id: Long, positionMs: Long, at: Long)
 
-    @Query("UPDATE episodes SET isPlayed = 1, playedAt = :at, positionMs = 0 WHERE id = :id")
+    @Query("UPDATE episodes SET isPlayed = 1, playedAt = :at, positionMs = 0, stateUpdatedAtMs = :at, syncDirty = 1 WHERE id = :id")
     suspend fun markPlayed(id: Long, at: Long)
 
-    @Query("UPDATE episodes SET isPlayed = 0, playedAt = NULL WHERE id = :id")
-    suspend fun markUnplayed(id: Long)
+    @Query("UPDATE episodes SET isPlayed = 0, playedAt = NULL, stateUpdatedAtMs = :at, syncDirty = 1 WHERE id = :id")
+    suspend fun markUnplayed(id: Long, at: Long)
+
+    /** Applies a newer state from another device without marking the row dirty. */
+    @Query(
+        "UPDATE episodes SET positionMs = :positionMs, isPlayed = :isPlayed, playedAt = :playedAt, " +
+            "lastPlayedAt = CASE WHEN :positionMs > 0 OR :isPlayed THEN :updatedAtMs ELSE lastPlayedAt END, " +
+            "stateUpdatedAtMs = :updatedAtMs, syncDirty = 0 WHERE id = :id AND stateUpdatedAtMs < :updatedAtMs"
+    )
+    suspend fun applyRemoteState(id: Long, positionMs: Long, isPlayed: Boolean, playedAt: Long?, updatedAtMs: Long): Int
+
+    @Query(
+        "SELECT e.id AS id, p.feedUrl AS feedUrl, e.guid AS guid, e.positionMs AS positionMs, e.isPlayed AS isPlayed, " +
+            "e.playedAt AS playedAt, e.lastPlayedAt AS lastPlayedAt, e.stateUpdatedAtMs AS stateUpdatedAtMs " +
+            "FROM episodes e JOIN podcasts p ON p.id = e.podcastId " +
+            "WHERE e.syncDirty = 1 AND (e.positionMs > 0 OR e.isPlayed = 1 OR e.stateUpdatedAtMs > 0)"
+    )
+    suspend fun dirtyStates(): List<DirtyEpisodeState>
+
+    @Query("UPDATE episodes SET syncDirty = 0 WHERE id = :id AND stateUpdatedAtMs <= :upToMs")
+    suspend fun clearDirty(id: Long, upToMs: Long)
 
     @Query("UPDATE episodes SET downloadState = :state WHERE id = :id")
     suspend fun setDownloadState(id: Long, state: DownloadState)

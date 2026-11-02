@@ -72,4 +72,19 @@
     <string name="settings_auto_delete">Delete when played</string>
     <string name="settings_refresh_interval">Refresh every (hours)</string>
     <string name="settings_refresh_now">Refresh now</string>
+    <string name="settings_section_sync">Sync between phones</string>
+    <string name="settings_sync_help">Keeps subscriptions, play positions and played episodes in step across your phones through a Supabase project. Create the tables with supabase/schema.sql from the repo, then enter the same project URL, API key and sync key on every phone.</string>
+    <string name="settings_sync_enabled">Sync enabled</string>
+    <string name="settings_supabase_url">Supabase project URL</string>
+    <string name="settings_supabase_url_hint">https://xyz.supabase.co</string>
+    <string name="settings_supabase_key">Supabase API key (anon / publishable)</string>
+    <string name="settings_supabase_key_hint">sb_publishable_… or eyJ…</string>
+    <string name="settings_sync_key">Sync key (same on every phone)</string>
+    <string name="settings_sync_key_hint">shakecast-…</string>
+    <string name="settings_sync_key_generate">Generate</string>
+    <string name="settings_sync_now">Sync now</string>
+    <string name="settings_syncing">Syncing…</string>
+    <string name="settings_sync_status_never">Not synced yet</string>
+    <string name="settings_sync_status_ok">Last sync %1$s</string>
+    <string name="settings_sync_status_error">Last sync failed: %1$s</string>
 </resources>

@@ -7,6 +7,7 @@ import androidx.navigation.toRoute
 import com.rogerbos.shakecast.data.download.DownloadScheduler
 import com.rogerbos.shakecast.data.repository.EpisodeRepository
 import com.rogerbos.shakecast.data.repository.PodcastRepository
+import com.rogerbos.shakecast.data.sync.SyncScheduler
 import com.rogerbos.shakecast.domain.model.Episode
 import com.rogerbos.shakecast.domain.model.Podcast
 import com.rogerbos.shakecast.domain.usecase.MarkEpisodePlayed
@@ -44,7 +45,8 @@ class PodcastDetailViewModel @Inject constructor(
     private val unsubscribePodcast: UnsubscribePodcast,
     private val markEpisodePlayed: MarkEpisodePlayed,
     private val downloadScheduler: DownloadScheduler,
-    private val playerConnection: PlayerConnection
+    private val playerConnection: PlayerConnection,
+    private val syncScheduler: SyncScheduler
 ) : ViewModel() {
 
     private val podcastId: Long = savedStateHandle.toRoute<Route.PodcastDetail>().podcastId
@@ -81,7 +83,12 @@ class PodcastDetailViewModel @Inject constructor(
 
     fun togglePlayed(episode: Episode) {
         viewModelScope.launch {
-            if (episode.isPlayed) episodeRepository.markUnplayed(episode.id) else markEpisodePlayed(episode.id)
+            if (episode.isPlayed) {
+                episodeRepository.markUnplayed(episode.id)
+                syncScheduler.enqueueSoon()
+            } else {
+                markEpisodePlayed(episode.id)
+            }
         }
     }
 
