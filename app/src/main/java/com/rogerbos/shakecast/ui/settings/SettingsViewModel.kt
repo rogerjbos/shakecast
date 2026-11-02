@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rogerbos.shakecast.data.refresh.RefreshScheduler
-import com.rogerbos.shakecast.data.remote.skiplist.SkipListClient
 import com.rogerbos.shakecast.data.remote.sync.SupabaseConfig
 import com.rogerbos.shakecast.data.remote.sync.SupabaseSyncApi
 import com.rogerbos.shakecast.data.settings.Settings
@@ -36,14 +35,13 @@ data class ShakeTestState(val active: Boolean, val magnitudeG: Float, val peaks:
 data class SettingsUiState(
     val settings: Settings,
     val shakeTest: ShakeTestState,
-    val connectionResult: String?,
     val syncTestResult: String?,
     val syncStatus: SettingsRepository.SyncStatus,
     val syncing: Boolean
 ) {
     companion object {
         val EMPTY = SettingsUiState(
-            Settings.DEFAULT, ShakeTestState(false, 1f, 0, 0), null, null, SettingsRepository.SyncStatus(null, null), false
+            Settings.DEFAULT, ShakeTestState(false, 0f, 0, 0), null, SettingsRepository.SyncStatus(null, null), false
         )
     }
 }
@@ -53,30 +51,26 @@ class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val settingsRepository: SettingsRepository,
     private val refreshScheduler: RefreshScheduler,
-    private val skipListClient: SkipListClient,
     private val syncScheduler: SyncScheduler,
     private val syncApi: SupabaseSyncApi
 ) : ViewModel() {
 
-    private val shakeTest = MutableStateFlow(ShakeTestState(false, 1f, 0, 0))
-    private val connectionResult = MutableStateFlow<String?>(null)
+    private val shakeTest = MutableStateFlow(ShakeTestState(false, 0f, 0, 0))
     private val syncTestResult = MutableStateFlow<String?>(null)
     private var detector: ShakeDetector? = null
     private var source: AccelerometerSource? = null
     private var pollJob: Job? = null
 
     val state: StateFlow<SettingsUiState> = combine(
-        settingsRepository.settings, shakeTest, connectionResult, syncTestResult,
+        settingsRepository.settings, shakeTest, syncTestResult,
         settingsRepository.syncStatus, syncScheduler.isSyncing()
-    ) { values ->
-        @Suppress("UNCHECKED_CAST")
+    ) { settings, shake, syncTest, syncStatus, syncing ->
         SettingsUiState(
-            settings = values[0] as Settings,
-            shakeTest = values[1] as ShakeTestState,
-            connectionResult = values[2] as String?,
-            syncTestResult = values[3] as String?,
-            syncStatus = values[4] as SettingsRepository.SyncStatus,
-            syncing = values[5] as Boolean
+            settings = settings,
+            shakeTest = shake,
+            syncTestResult = syncTest,
+            syncStatus = syncStatus,
+            syncing = syncing
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState.EMPTY)
 
@@ -117,18 +111,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun testConnection() {
-        viewModelScope.launch {
-            val base = settingsRepository.current().skipListBaseUrl
-            connectionResult.value = withContext(Dispatchers.IO) {
-                skipListClient.ping(base).fold(
-                    onSuccess = { "HTTP $it" },
-                    onFailure = { it.message ?: it.javaClass.simpleName }
-                )
-            }
-        }
-    }
-
     fun toggleShakeTest() {
         if (shakeTest.value.active) stopShakeTest() else startShakeTest()
     }
@@ -140,7 +122,7 @@ class SettingsViewModel @Inject constructor(
         detector = d
         source = s
         s.start()
-        shakeTest.value = ShakeTestState(active = true, magnitudeG = 1f, peaks = 0, shakes = 0)
+        shakeTest.value = ShakeTestState(active = true, magnitudeG = 0f, peaks = 0, shakes = 0)
         pollJob = viewModelScope.launch {
             while (isActive) {
                 shakeTest.update { it.copy(magnitudeG = d.lastMagnitudeG, peaks = d.recentPeaks) }

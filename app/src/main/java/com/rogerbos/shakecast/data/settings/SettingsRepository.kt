@@ -36,7 +36,6 @@ class SettingsRepository @Inject constructor(
         val episodesToKeepPerShow = intPreferencesKey("episodesToKeepPerShow")
         val autoDeleteWhenPlayed = booleanPreferencesKey("autoDeleteWhenPlayed")
         val refreshIntervalHours = intPreferencesKey("refreshIntervalHours")
-        val skipListBaseUrl = stringPreferencesKey("skipListBaseUrl")
         val syncEnabled = booleanPreferencesKey("syncEnabled")
         val supabaseUrl = stringPreferencesKey("supabaseUrl")
         val supabaseKey = stringPreferencesKey("supabaseKey")
@@ -60,7 +59,6 @@ class SettingsRepository @Inject constructor(
             episodesToKeepPerShow = p[Keys.episodesToKeepPerShow] ?: d.episodesToKeepPerShow,
             autoDeleteWhenPlayed = p[Keys.autoDeleteWhenPlayed] ?: d.autoDeleteWhenPlayed,
             refreshIntervalHours = p[Keys.refreshIntervalHours] ?: d.refreshIntervalHours,
-            skipListBaseUrl = p[Keys.skipListBaseUrl] ?: d.skipListBaseUrl,
             syncEnabled = p[Keys.syncEnabled] ?: d.syncEnabled,
             supabaseUrl = p[Keys.supabaseUrl] ?: d.supabaseUrl,
             supabaseKey = p[Keys.supabaseKey] ?: d.supabaseKey,
@@ -103,7 +101,6 @@ class SettingsRepository @Inject constructor(
             p[Keys.episodesToKeepPerShow] = next.episodesToKeepPerShow
             p[Keys.autoDeleteWhenPlayed] = next.autoDeleteWhenPlayed
             p[Keys.refreshIntervalHours] = next.refreshIntervalHours
-            p[Keys.skipListBaseUrl] = next.skipListBaseUrl
             p[Keys.syncEnabled] = next.syncEnabled
             p[Keys.supabaseUrl] = next.supabaseUrl
             p[Keys.supabaseKey] = next.supabaseKey

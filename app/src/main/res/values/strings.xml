@@ -63,8 +63,7 @@
     <string name="settings_haptics">Vibrate on skip</string>
     <string name="settings_section_ads">Ads</string>
     <string name="settings_auto_skip_ads">Auto-skip detected ads</string>
-    <string name="settings_skiplist_url">Skip-list server (your Mac)</string>
-    <string name="settings_skiplist_url_hint">http://192.168.1.20:8787</string>
+    <string name="settings_auto_skip_ads_help">Uses the transcript a show publishes in its feed to find sponsor reads. Shows without a transcript play normally.</string>
     <string name="settings_test_connection">Test connection</string>
     <string name="settings_section_downloads">Downloads</string>
     <string name="settings_wifi_only">Download on Wi-Fi only</string>

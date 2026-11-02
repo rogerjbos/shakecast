@@ -1,12 +1,9 @@
 package com.rogerbos.shakecast.domain.usecase
 
 import com.rogerbos.shakecast.data.db.EpisodeDao
-import com.rogerbos.shakecast.data.remote.skiplist.SkipListClient
-import com.rogerbos.shakecast.data.remote.skiplist.SkipListKey
 import com.rogerbos.shakecast.data.remote.transcript.TranscriptCoalescer
 import com.rogerbos.shakecast.data.remote.transcript.TranscriptFetcher
 import com.rogerbos.shakecast.data.repository.EpisodeRepository
-import com.rogerbos.shakecast.data.settings.SettingsRepository
 import com.rogerbos.shakecast.di.IoDispatcher
 import com.rogerbos.shakecast.domain.ads.AdBlockAlignment
 import com.rogerbos.shakecast.domain.ads.AdDetector
@@ -17,16 +14,13 @@ import timber.log.Timber
 import javax.inject.Inject
 
 /**
- * Finds ad blocks for an episode: a skip-list from the Mac first, then the
- * feed's transcript run through the ported detector. Either source is only
- * trusted when its duration matches the local file, otherwise dynamic ad
- * insertion has shifted the timestamps.
+ * Finds ad blocks for an episode by running the feed's transcript through the
+ * ported detector. The transcript is only trusted when it lines up with the
+ * local file, otherwise dynamic ad insertion has shifted the timestamps.
  */
 class ResolveAdBlocks @Inject constructor(
     private val episodeDao: EpisodeDao,
     private val episodeRepository: EpisodeRepository,
-    private val settingsRepository: SettingsRepository,
-    private val skipListClient: SkipListClient,
     private val transcriptFetcher: TranscriptFetcher,
     @IoDispatcher private val io: CoroutineDispatcher
 ) {
@@ -38,23 +32,7 @@ class ResolveAdBlocks @Inject constructor(
         if (!force && episode.adSource == AdSource.NONE && resolvedRecently) return@withContext AdSource.NONE
 
         val actual = actualDurationSecOverride ?: episode.durationSec?.toDouble() ?: 0.0
-        val settings = settingsRepository.current()
         var misaligned = false
-
-        if (settings.skipListBaseUrl.isNotBlank()) {
-            val fileName = SkipListKey.fileName(row.podcastTitle, episode.title)
-            skipListClient.fetch(settings.skipListBaseUrl, fileName)
-                .onFailure { Timber.w(it, "Skip-list fetch failed for %s", fileName) }
-                .getOrNull()?.let { dto ->
-                    if (AdBlockAlignment.isAligned(dto.totalDuration, actual)) {
-                        episodeRepository.setAdBlocks(episodeId, AdSource.SKIPLIST, dto.toAdBlocks())
-                        Timber.i("Skip-list applied to episode %d (%d blocks)", episodeId, dto.adBlocks.size)
-                        return@withContext AdSource.SKIPLIST
-                    }
-                    Timber.i("Skip-list misaligned for %d: %.1f vs %.1f", episodeId, dto.totalDuration, actual)
-                    misaligned = true
-                }
-        }
 
         val transcriptUrl = episode.transcriptUrl
         if (!transcriptUrl.isNullOrBlank()) {

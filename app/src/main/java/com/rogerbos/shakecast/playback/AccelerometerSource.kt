@@ -34,6 +34,12 @@ class AccelerometerSource(
 
     override fun onSensorChanged(event: SensorEvent) {
         detector.onSample(event.timestamp, event.values[0], event.values[1], event.values[2])
+        val g = detector.lastMagnitudeG
+        if (g >= LOG_ABOVE_G) Timber.v("linear %.2f g, peaks %d", g, detector.recentPeaks)
+    }
+
+    private companion object {
+        const val LOG_ABOVE_G = 0.8f
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit

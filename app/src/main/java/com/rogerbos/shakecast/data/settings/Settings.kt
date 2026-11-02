@@ -1,9 +1,10 @@
 package com.rogerbos.shakecast.data.settings
 
+/** Thresholds are linear acceleration in g, with gravity already removed. */
 enum class ShakeSensitivity(val thresholdG: Float, val peaksRequired: Int, val windowMs: Long) {
-    LOW(thresholdG = 3.2f, peaksRequired = 3, windowMs = 700),
-    MEDIUM(thresholdG = 2.7f, peaksRequired = 3, windowMs = 700),
-    HIGH(thresholdG = 2.2f, peaksRequired = 2, windowMs = 600)
+    LOW(thresholdG = 2.2f, peaksRequired = 3, windowMs = 800),
+    MEDIUM(thresholdG = 1.5f, peaksRequired = 2, windowMs = 700),
+    HIGH(thresholdG = 1.0f, peaksRequired = 2, windowMs = 700)
 }
 
 data class Settings(
@@ -19,7 +20,6 @@ data class Settings(
     val episodesToKeepPerShow: Int,
     val autoDeleteWhenPlayed: Boolean,
     val refreshIntervalHours: Int,
-    val skipListBaseUrl: String,
     val syncEnabled: Boolean,
     val supabaseUrl: String,
     val supabaseKey: String,
@@ -39,7 +39,6 @@ data class Settings(
             episodesToKeepPerShow = 3,
             autoDeleteWhenPlayed = true,
             refreshIntervalHours = 3,
-            skipListBaseUrl = "",
             syncEnabled = false,
             supabaseUrl = "",
             supabaseKey = "",

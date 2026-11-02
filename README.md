@@ -13,7 +13,7 @@ A glove-friendly Android podcast player. Shake the phone hard to skip ahead 30 s
   - **Headset button**: 1 click play/pause, 2 clicks skip forward, 3 clicks skip back. Next/previous keys also map to skip.
   - **Volume chord** (opt-in): volume up then down within half a second skips forward; down then up skips back. Works with the screen off while Shakecast is the active media session.
   - **Big button**: the bottom third of the Now Playing screen is one large skip button.
-- Automatic ad skipping: the phrase/regex detector from `podcast3r/skip_ads.py` is ported to Kotlin and runs on the feed's `<podcast:transcript>`, or a skip-list JSON served from the Mac running the podcast3r pipeline. Blocks are only trusted when their duration matches the local file, so dynamically inserted ads never cause content to be skipped.
+- Automatic ad skipping: the phrase/regex detector from `podcast3r/skip_ads.py` is ported to Kotlin and runs on the feed's `<podcast:transcript>`. Blocks are only trusted when the transcript lines up with the local file, so dynamically inserted ads never cause content to be skipped.
 
 ## Build
 
@@ -33,12 +33,3 @@ Subscriptions, play positions and played state can be kept in step across phones
 3. On every other phone enter the same URL, key and sync key.
 
 Each phone pushes its own changes and pulls the rest. Newer timestamps win, a played episode on one phone is deleted on the others, and a paused episode jumps to the position the other phone reached. Downloads stay per phone.
-
-## Serving skip-lists from the Mac
-
-```
-cd /Users/rogerbos/Node_HOME/podcast3r/transcripts
-python3 -m http.server 8787
-```
-
-Then set the skip-list server in Settings to `http://<mac-ip>:8787` (use `http://10.0.2.2:8787` on the emulator). Files are looked up as `<podcast>_<episode>_skiplist.json` using the same sanitised name that `transcribe.py` writes.

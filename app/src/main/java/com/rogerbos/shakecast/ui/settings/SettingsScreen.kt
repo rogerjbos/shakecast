@@ -116,19 +116,12 @@ fun SettingsScreen(
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             SectionHeader(stringResource(R.string.settings_section_ads))
             SwitchRow(stringResource(R.string.settings_auto_skip_ads), s.autoSkipAdsEnabled) { v -> viewModel.update { it.copy(autoSkipAdsEnabled = v) } }
-            DebouncedTextField(
-                value = s.skipListBaseUrl,
-                label = stringResource(R.string.settings_skiplist_url),
-                placeholder = stringResource(R.string.settings_skiplist_url_hint),
-                onCommit = { v -> viewModel.update { it.copy(skipListBaseUrl = v) } }
+            Text(
+                stringResource(R.string.settings_auto_skip_ads_help),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
-            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                OutlinedButton(onClick = viewModel::testConnection, enabled = s.skipListBaseUrl.isNotBlank()) {
-                    Text(stringResource(R.string.settings_test_connection))
-                }
-                Spacer(Modifier.width(16.dp))
-                state.connectionResult?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-            }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             SectionHeader(stringResource(R.string.settings_section_downloads))

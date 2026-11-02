@@ -39,6 +39,39 @@ class ShakeDetectorTest {
     }
 
     @Test
+    fun moderateShakeTriggersNormalAndEasy() {
+        for (level in listOf(ShakeSensitivity.MEDIUM, ShakeSensitivity.HIGH)) {
+            var shakes = 0
+            val d = detector(level) { shakes++ }
+            feedRest(d)
+            feedOscillation(d, frequencyHz = 4.0, amplitudeG = 2.0, seconds = 0.6)
+            assertEquals("$level", 1, shakes)
+        }
+    }
+
+    @Test
+    fun hardPresetNeedsMoreThanAModerateShake() {
+        var shakes = 0
+        val d = detector(ShakeSensitivity.LOW) { shakes++ }
+        feedRest(d)
+        feedOscillation(d, frequencyHz = 4.0, amplitudeG = 2.0, seconds = 0.6)
+        assertEquals(0, shakes)
+    }
+
+    @Test
+    fun tiltingThePhoneSlowlyDoesNotCount() {
+        var shakes = 0
+        val d = detector(ShakeSensitivity.HIGH) { shakes++ }
+        feedRest(d)
+        for (i in 0 until 100) {
+            val angle = i / 100.0 * PI / 2
+            val t = (1_000 + i * 20L) * 1_000_000L
+            d.onSample(t, (ShakeDetector.GRAVITY * sin(angle)).toFloat(), (ShakeDetector.GRAVITY * kotlin.math.cos(angle)).toFloat(), 0f)
+        }
+        assertEquals(0, shakes)
+    }
+
+    @Test
     fun secondShakeAfterCooldownTriggersAgain() {
         var shakes = 0
         val d = detector(ShakeSensitivity.MEDIUM) { shakes++ }
@@ -58,17 +91,17 @@ class ShakeDetectorTest {
     }
 
     @Test
-    fun runningDoesNotTriggerMediumButMayTriggerHigh() {
+    fun joggingDoesNotTriggerNormalButMayTriggerEasy() {
         var medium = 0
         val dm = detector(ShakeSensitivity.MEDIUM) { medium++ }
         feedRest(dm)
-        feedOscillation(dm, frequencyHz = 3.0, amplitudeG = 1.5, seconds = 10.0)
+        feedOscillation(dm, frequencyHz = 3.0, amplitudeG = 1.2, seconds = 10.0)
         assertEquals(0, medium)
 
         var high = 0
         val dh = detector(ShakeSensitivity.HIGH) { high++ }
         feedRest(dh)
-        feedOscillation(dh, frequencyHz = 3.0, amplitudeG = 1.5, seconds = 10.0)
+        feedOscillation(dh, frequencyHz = 3.0, amplitudeG = 1.2, seconds = 10.0)
         assertEquals(true, high >= 1)
     }
 

@@ -1,7 +1,7 @@
 package com.rogerbos.shakecast.domain.ads
 
-import com.rogerbos.shakecast.data.remote.skiplist.SkipListDto
 import com.rogerbos.shakecast.data.remote.transcript.TranscriptParser
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assume.assumeTrue
@@ -15,6 +15,17 @@ import org.junit.Test
  * the test is skipped when they are absent.
  */
 class AdDetectorFixtureTest {
+
+    @Serializable
+    private data class SkipListDto(
+        val totalDuration: Double,
+        val adBlocks: List<Block>,
+        val contentRanges: List<Block>,
+        val adTimeSaved: Double
+    )
+
+    @Serializable
+    private data class Block(val start: Double, val end: Double, val reason: String? = null)
 
     private val json = Json { ignoreUnknownKeys = true }
 
