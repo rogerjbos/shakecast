@@ -51,6 +51,14 @@ interface PodcastDao {
     @Query("UPDATE podcasts SET syncDirty = 0 WHERE id = :id AND subscriptionUpdatedAtMs <= :upToMs")
     suspend fun clearDirty(id: Long, upToMs: Long)
 
-    @Query("UPDATE podcasts SET subscriptionUpdatedAtMs = :updatedAtMs, syncDirty = 0 WHERE id = :id AND subscriptionUpdatedAtMs < :updatedAtMs")
-    suspend fun applyRemoteSubscription(id: Long, updatedAtMs: Long)
+    @Query(
+        "UPDATE podcasts SET subscriptionUpdatedAtMs = :updatedAtMs, syncDirty = 0, " +
+            "introSkipSec = COALESCE(:introSkipSec, introSkipSec), outroSkipSec = COALESCE(:outroSkipSec, outroSkipSec) " +
+            "WHERE id = :id AND subscriptionUpdatedAtMs < :updatedAtMs"
+    )
+    suspend fun applyRemoteSubscription(id: Long, updatedAtMs: Long, introSkipSec: Int?, outroSkipSec: Int?)
+
+    /** Intro/outro are shared between devices, so changing them re-publishes the subscription. */
+    @Query("UPDATE podcasts SET introSkipSec = :introSkipSec, outroSkipSec = :outroSkipSec, subscriptionUpdatedAtMs = :at, syncDirty = 1 WHERE id = :id")
+    suspend fun setIntroOutro(id: Long, introSkipSec: Int, outroSkipSec: Int, at: Long)
 }

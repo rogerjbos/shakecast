@@ -6,12 +6,14 @@ import com.rogerbos.shakecast.data.db.PodcastEntity
 import com.rogerbos.shakecast.data.db.SyncDao
 import com.rogerbos.shakecast.data.remote.sync.EpisodeStateRow
 import com.rogerbos.shakecast.data.remote.sync.ManualSkipRow
+import com.rogerbos.shakecast.data.remote.sync.SettingsRow
 import com.rogerbos.shakecast.data.remote.sync.SubscriptionRow
 import com.rogerbos.shakecast.data.remote.sync.SupabaseConfig
 import com.rogerbos.shakecast.data.remote.sync.SupabaseSyncApi
 import com.rogerbos.shakecast.data.repository.ManualSkipRepository
 import com.rogerbos.shakecast.data.repository.PodcastRepository
 import com.rogerbos.shakecast.data.settings.SettingsRepository
+import com.rogerbos.shakecast.data.settings.SettingsSync
 import com.rogerbos.shakecast.di.IoDispatcher
 import com.rogerbos.shakecast.domain.usecase.MarkEpisodePlayed
 import com.rogerbos.shakecast.domain.usecase.RefreshFeeds
@@ -69,6 +71,7 @@ class SyncEngine @Inject constructor(
                 for (id in newPodcastIds) refreshFeeds.refresh(id)
                 pullEpisodeStates(config)
                 syncManualSkips(config)
+                syncSettings(config)
             }.onSuccess {
                 settingsRepository.recordSyncResult(null)
                 Timber.i("Sync complete")
@@ -90,7 +93,9 @@ class SyncEngine @Inject constructor(
                 itunesId = p.itunesId,
                 artworkUrl = p.artworkUrl,
                 subscribed = true,
-                updatedAtMs = timestampOf(p)
+                updatedAtMs = timestampOf(p),
+                introSkipSec = p.introSkipSec,
+                outroSkipSec = p.outroSkipSec
             )
         } + tombstones.map { t ->
             SubscriptionRow(syncKey = config.syncKey, feedUrl = t.feedUrl, subscribed = false, updatedAtMs = t.deletedAtMs)
@@ -141,7 +146,8 @@ class SyncEngine @Inject constructor(
                     added += podcastRepository.subscribeFromRemote(row)
                     Timber.i("Sync subscribed to %s", row.title)
                 }
-                SubscriptionAction.ACCEPT_TIMESTAMP -> podcastDao.applyRemoteSubscription(checkNotNull(local).id, row.updatedAtMs)
+                SubscriptionAction.ACCEPT_TIMESTAMP ->
+                    podcastDao.applyRemoteSubscription(checkNotNull(local).id, row.updatedAtMs, row.introSkipSec, row.outroSkipSec)
                 SubscriptionAction.UNSUBSCRIBE -> {
                     unsubscribePodcast(checkNotNull(local).id, recordTombstone = false)
                     Timber.i("Sync unsubscribed from %s", local.title)
@@ -190,6 +196,21 @@ class SyncEngine @Inject constructor(
             manualSkipRepository.applyRemote(row.feedUrl, row.guid, row.startMs, row.endMs, row.deleted, row.updatedAtMs)
         }
         Timber.d("Pulled %d manual skips", remote.size)
+    }
+
+    private suspend fun syncSettings(config: SupabaseConfig) {
+        val state = settingsRepository.syncState()
+        if (state.dirty) {
+            val row = SettingsRow(config.syncKey, SettingsSync.toRemoteJson(settingsRepository.current()), state.updatedAtMs)
+            api.pushSettings(config, row).getOrThrow()
+            settingsRepository.markSynced(state.updatedAtMs)
+            Timber.d("Pushed settings")
+        }
+        val remote = api.pullSettings(config).getOrThrow() ?: return
+        if (remote.updatedAtMs > state.updatedAtMs) {
+            settingsRepository.applyRemote(remote.settings, remote.updatedAtMs)
+            Timber.i("Applied settings from another device")
+        }
     }
 
     private fun timestampOf(p: PodcastEntity) = SyncDecisions.subscriptionTimestamp(p.subscriptionUpdatedAtMs, p.subscribedAt)

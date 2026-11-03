@@ -11,5 +11,7 @@ data class Podcast(
     val subscribedAt: Long,
     val lastRefreshedAt: Long?,
     val autoSkipAds: Boolean,
-    val autoDownload: Boolean
+    val autoDownload: Boolean,
+    val introSkipSec: Int,
+    val outroSkipSec: Int
 )

@@ -62,9 +62,14 @@ class PodcastRepository @Inject constructor(
             artworkUrl = row.artworkUrl.orEmpty(),
             subscribedAt = System.currentTimeMillis(),
             subscriptionUpdatedAtMs = row.updatedAtMs,
-            syncDirty = false
+            syncDirty = false,
+            introSkipSec = row.introSkipSec ?: 0,
+            outroSkipSec = row.outroSkipSec ?: 0
         )
     }
+
+    suspend fun setIntroOutro(id: Long, introSkipSec: Int, outroSkipSec: Int) =
+        podcastDao.setIntroOutro(id, introSkipSec.coerceAtLeast(0), outroSkipSec.coerceAtLeast(0), System.currentTimeMillis())
 
     private suspend fun insert(
         feedUrl: String,
@@ -74,7 +79,9 @@ class PodcastRepository @Inject constructor(
         artworkUrl: String,
         subscribedAt: Long,
         subscriptionUpdatedAtMs: Long,
-        syncDirty: Boolean
+        syncDirty: Boolean,
+        introSkipSec: Int = 0,
+        outroSkipSec: Int = 0
     ): Long {
         val inserted = podcastDao.insert(
             PodcastEntity(
@@ -92,7 +99,9 @@ class PodcastRepository @Inject constructor(
                 autoSkipAds = true,
                 autoDownload = true,
                 subscriptionUpdatedAtMs = subscriptionUpdatedAtMs,
-                syncDirty = syncDirty
+                syncDirty = syncDirty,
+                introSkipSec = introSkipSec,
+                outroSkipSec = outroSkipSec
             )
         )
         return if (inserted > 0) inserted else checkNotNull(podcastDao.getByFeedUrl(feedUrl)).id

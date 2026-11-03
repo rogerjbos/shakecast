@@ -9,6 +9,7 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.Json
+import okhttp3.Credentials
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -43,7 +44,13 @@ object AppModule {
         .followRedirects(true)
         .followSslRedirects(true)
         .addInterceptor { chain ->
-            chain.proceed(chain.request().newBuilder().header("User-Agent", USER_AGENT).build())
+            val request = chain.request()
+            val builder = request.newBuilder().header("User-Agent", USER_AGENT)
+            // Private member feeds often carry credentials in the address; OkHttp parses but never sends them.
+            if (request.url.username.isNotEmpty() && request.header("Authorization") == null) {
+                builder.header("Authorization", Credentials.basic(request.url.username, request.url.password))
+            }
+            chain.proceed(builder.build())
         }
         .apply {
             if (BuildConfig.DEBUG) {

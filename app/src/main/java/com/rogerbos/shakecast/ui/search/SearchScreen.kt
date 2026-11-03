@@ -14,6 +14,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -28,6 +29,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -48,12 +52,13 @@ fun SearchScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val keyboard = LocalSoftwareKeyboardController.current
+    var queryText by remember { mutableStateOf(state.query) }
 
     Column(modifier = modifier.fillMaxSize()) {
         TopAppBar(title = { Text(stringResource(R.string.search_title)) })
         OutlinedTextField(
-            value = state.query,
-            onValueChange = viewModel::onQueryChange,
+            value = queryText,
+            onValueChange = { queryText = it; viewModel.onQueryChange(it) },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             placeholder = { Text(stringResource(R.string.search_hint)) },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
@@ -68,6 +73,30 @@ fun SearchScreen(
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(16.dp)
             )
+        }
+        state.feedUrlCandidate?.let { url ->
+            val alreadySubscribed = url in state.subscribedFeedUrls
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Filled.RssFeed, contentDescription = null, modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.search_add_feed_title), style = MaterialTheme.typography.bodyLarge)
+                    Text(url, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    state.addedFeedTitle?.let {
+                        Text(stringResource(R.string.search_added_feed, it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+                Spacer(Modifier.width(8.dp))
+                when {
+                    state.addingFeed -> CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                    alreadySubscribed -> FilledTonalButton(onClick = {}, enabled = false) { Text(stringResource(R.string.search_subscribed)) }
+                    else -> Button(onClick = { keyboard?.hide(); viewModel.addFeed(url) }) { Text(stringResource(R.string.search_add_feed)) }
+                }
+            }
+            HorizontalDivider()
         }
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(state.results, key = { it.feedUrl }) { result ->

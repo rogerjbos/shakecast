@@ -8,11 +8,16 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.util.Util
+import androidx.media3.common.C
+import androidx.media3.session.LibraryResult
+import androidx.media3.session.MediaLibraryService.LibraryParams
+import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.ConnectionResult
 import androidx.media3.session.MediaSession.MediaItemsWithStartPosition
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
+import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.rogerbos.shakecast.data.repository.EpisodeRepository
@@ -34,11 +39,13 @@ class ShakecastSessionCallback(
     private val skipBack: (source: String) -> Unit,
     private val toggleAutoSkip: () -> Unit,
     private val setSleepTimer: (minutes: Int) -> Unit,
-    private val jumpChapter: (direction: Int) -> Unit
-) : MediaSession.Callback {
+    private val jumpChapter: (direction: Int) -> Unit,
+    private val libraryTree: LibraryTree,
+    private val libraryLabels: LibraryTree.Labels
+) : MediaLibrarySession.Callback {
 
     override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): ConnectionResult {
-        val sessionCommands = ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+        val sessionCommands = ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
             .apply { PlaybackCommands.all.forEach { add(it) } }
             .build()
         return ConnectionResult.AcceptedResultBuilder(session)
@@ -62,6 +69,64 @@ class ShakecastSessionCallback(
             else -> return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
         }
         return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+    }
+
+    /** Cars, watches and Bluetooth units send next/previous; those become the skip buttons. */
+    override fun onPlayerCommandRequest(session: MediaSession, controller: MediaSession.ControllerInfo, playerCommand: Int): Int =
+        when (playerCommand) {
+            Player.COMMAND_SEEK_TO_NEXT -> { skipForward("controller-next"); SessionResult.RESULT_INFO_SKIPPED }
+            Player.COMMAND_SEEK_TO_PREVIOUS -> { skipBack("controller-previous"); SessionResult.RESULT_INFO_SKIPPED }
+            else -> SessionResult.RESULT_SUCCESS
+        }
+
+    override fun onGetLibraryRoot(
+        session: MediaLibrarySession,
+        browser: MediaSession.ControllerInfo,
+        params: LibraryParams?
+    ): ListenableFuture<LibraryResult<MediaItem>> =
+        Futures.immediateFuture(LibraryResult.ofItem(libraryTree.root(libraryLabels), libraryTree.rootParams()))
+
+    override fun onGetChildren(
+        session: MediaLibrarySession,
+        browser: MediaSession.ControllerInfo,
+        parentId: String,
+        page: Int,
+        pageSize: Int,
+        params: LibraryParams?
+    ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> = scope.future {
+        val children = libraryTree.children(parentId, libraryLabels)
+            ?: return@future LibraryResult.ofError(LibraryResult.RESULT_ERROR_BAD_VALUE)
+        val from = (page * pageSize).coerceAtMost(children.size)
+        val to = (from + pageSize).coerceAtMost(children.size)
+        LibraryResult.ofItemList(ImmutableList.copyOf(children.subList(from, to)), params)
+    }
+
+    override fun onGetItem(
+        session: MediaLibrarySession,
+        browser: MediaSession.ControllerInfo,
+        mediaId: String
+    ): ListenableFuture<LibraryResult<MediaItem>> = scope.future {
+        libraryTree.item(mediaId, libraryLabels)?.let { LibraryResult.ofItem(it, null) }
+            ?: LibraryResult.ofError(LibraryResult.RESULT_ERROR_BAD_VALUE)
+    }
+
+    /** Playing from a browse list resumes where the episode was left. */
+    override fun onSetMediaItems(
+        mediaSession: MediaSession,
+        controller: MediaSession.ControllerInfo,
+        mediaItems: List<MediaItem>,
+        startIndex: Int,
+        startPositionMs: Long
+    ): ListenableFuture<MediaItemsWithStartPosition> = scope.future {
+        val resolved = mediaItems.mapNotNull { item ->
+            if (item.localConfiguration != null) item
+            else mediaItemFactory.episodeId(item.mediaId)?.let { episodeRepository.get(it) }?.let(mediaItemFactory::create)
+        }
+        val index = startIndex.coerceIn(0, (resolved.size - 1).coerceAtLeast(0))
+        val position = if (startPositionMs == C.TIME_UNSET && resolved.size == 1) {
+            mediaItemFactory.episodeId(resolved[0].mediaId)?.let { episodeRepository.get(it) }?.takeIf { !it.isPlayed }?.positionMs ?: 0L
+        } else startPositionMs
+        MediaItemsWithStartPosition(resolved, index, position)
     }
 
     override fun onMediaButtonEvent(session: MediaSession, controllerInfo: MediaSession.ControllerInfo, intent: Intent): Boolean {

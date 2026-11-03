@@ -101,6 +101,10 @@ class PodcastDetailViewModel @Inject constructor(
         viewModelScope.launch { podcastRepository.setAutoSkipAds(podcastId, enabled) }
     }
 
+    fun setIntroOutro(introSkipSec: Int, outroSkipSec: Int) {
+        viewModelScope.launch { podcastRepository.setIntroOutro(podcastId, introSkipSec, outroSkipSec) }
+    }
+
     fun setAutoDownload(enabled: Boolean) {
         viewModelScope.launch { podcastRepository.setAutoDownload(podcastId, enabled) }
     }

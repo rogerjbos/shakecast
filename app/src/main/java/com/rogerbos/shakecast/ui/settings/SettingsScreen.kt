@@ -19,7 +19,13 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,6 +54,31 @@ fun SettingsScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val s = state.settings
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val opmlStrings = SettingsViewModel.OpmlStrings(
+        empty = stringResource(R.string.opml_empty),
+        error = { stringResource_error(context, it) },
+        progress = { done, total -> context.getString(R.string.opml_progress, done, total) },
+        done = { added, skipped, failed -> context.getString(R.string.opml_done, added, skipped, failed) }
+    )
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val reader = withContext(Dispatchers.IO) { runCatching { context.contentResolver.openInputStream(uri)?.bufferedReader() }.getOrNull() }
+            if (reader == null) viewModel.setOpmlStatus(context.getString(R.string.opml_error, "cannot open file")) else viewModel.importOpml(reader, opmlStrings)
+        }
+    }
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/x-opml")) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val text = viewModel.exportOpmlText()
+            val ok = withContext(Dispatchers.IO) {
+                runCatching { context.contentResolver.openOutputStream(uri)?.use { it.write(text.toByteArray()) } != null }.getOrDefault(false)
+            }
+            viewModel.setOpmlStatus(context.getString(if (ok) R.string.opml_exported else R.string.opml_export_failed))
+        }
+    }
 
     Column(modifier = modifier.fillMaxSize()) {
         TopAppBar(title = { Text(stringResource(R.string.settings_title)) })
@@ -164,6 +195,15 @@ fun SettingsScreen(
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            SectionHeader(stringResource(R.string.settings_section_subscriptions))
+            Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedButton(onClick = { importLauncher.launch(arrayOf("*/*")) }) { Text(stringResource(R.string.opml_import)) }
+                Spacer(Modifier.width(12.dp))
+                OutlinedButton(onClick = { exportLauncher.launch("shakecast-subscriptions.opml") }) { Text(stringResource(R.string.opml_export)) }
+            }
+            state.opmlStatus?.let { HelpText(it) }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             SectionHeader(stringResource(R.string.settings_section_sync))
             Text(
                 stringResource(R.string.settings_sync_help),
@@ -246,6 +286,9 @@ private fun sensitivityLabel(level: ShakeSensitivity): String = when (level) {
     ShakeSensitivity.MEDIUM -> stringResource(R.string.sensitivity_medium)
     ShakeSensitivity.HIGH -> stringResource(R.string.sensitivity_high)
 }
+
+private fun stringResource_error(context: android.content.Context, message: String): String =
+    context.getString(R.string.opml_error, message)
 
 @Composable
 private fun HelpText(text: String) {

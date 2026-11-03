@@ -3,6 +3,8 @@ package com.rogerbos.shakecast.ui.home
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -16,10 +18,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -58,9 +64,29 @@ fun HomeScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var menuEpisode by remember { mutableStateOf<Episode?>(null) }
+    var showPodcastMenu by remember { mutableStateOf(false) }
+    var searchOpen by remember { mutableStateOf(false) }
 
     Column(modifier = modifier.fillMaxSize()) {
-        TopAppBar(title = { Text(stringResource(R.string.app_name)) })
+        TopAppBar(
+            title = { Text(stringResource(R.string.app_name)) },
+            actions = {
+                IconButton(onClick = { searchOpen = !searchOpen; if (!searchOpen) viewModel.setQuery("") }) {
+                    Icon(if (searchOpen) Icons.Filled.Close else Icons.Filled.Search, contentDescription = stringResource(R.string.home_search_episodes))
+                }
+            }
+        )
+        if (searchOpen) {
+            // Local text state: driving the field from the view model's StateFlow reorders fast input.
+            var queryText by remember { mutableStateOf(state.query) }
+            OutlinedTextField(
+                value = queryText,
+                onValueChange = { queryText = it; viewModel.setQuery(it) },
+                placeholder = { Text(stringResource(R.string.home_search_episodes)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+        }
         PullToRefreshBox(
             isRefreshing = state.isRefreshing,
             onRefresh = viewModel::refresh,
@@ -90,6 +116,25 @@ fun HomeScreen(
                             }
                         }
                         HorizontalDivider()
+                        Row(
+                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            HomeFilter.entries.forEach { f ->
+                                FilterChip(
+                                    selected = state.filter == f,
+                                    onClick = { viewModel.setFilter(f) },
+                                    label = { Text(filterLabel(f)) },
+                                    modifier = Modifier.padding(end = 8.dp)
+                                )
+                            }
+                            val selectedPodcast = state.podcasts.firstOrNull { it.id == state.podcastFilterId }
+                            FilterChip(
+                                selected = selectedPodcast != null,
+                                onClick = { showPodcastMenu = true },
+                                label = { Text(selectedPodcast?.title ?: stringResource(R.string.home_all_shows), maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                            )
+                        }
                         if (state.queue.isNotEmpty()) {
                             Text(
                                 text = stringResource(R.string.home_queue),
@@ -121,7 +166,7 @@ fun HomeScreen(
                     }
                     item {
                         Text(
-                            text = stringResource(R.string.home_up_next),
+                            text = stringResource(if (state.filter == HomeFilter.UNPLAYED && state.query.isBlank()) R.string.home_up_next else R.string.home_episodes),
                             style = MaterialTheme.typography.titleMedium,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
@@ -145,6 +190,21 @@ fun HomeScreen(
                         HorizontalDivider()
                     }
                 }
+            }
+        }
+    }
+
+    if (showPodcastMenu) {
+        DropdownMenu(expanded = true, onDismissRequest = { showPodcastMenu = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.home_all_shows)) },
+                onClick = { viewModel.setPodcastFilter(null); showPodcastMenu = false }
+            )
+            state.podcasts.forEach { podcast ->
+                DropdownMenuItem(
+                    text = { Text(podcast.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    onClick = { viewModel.setPodcastFilter(podcast.id); showPodcastMenu = false }
+                )
             }
         }
     }
@@ -173,6 +233,14 @@ fun HomeScreen(
             )
         }
     }
+}
+
+@Composable
+private fun filterLabel(filter: HomeFilter): String = when (filter) {
+    HomeFilter.UNPLAYED -> stringResource(R.string.home_filter_unplayed)
+    HomeFilter.IN_PROGRESS -> stringResource(R.string.home_filter_in_progress)
+    HomeFilter.DOWNLOADED -> stringResource(R.string.home_filter_downloaded)
+    HomeFilter.ALL -> stringResource(R.string.home_filter_all)
 }
 
 private fun openEpisode(currentId: Long?, episode: Episode, viewModel: HomeViewModel, onOpenNowPlaying: () -> Unit) {

@@ -13,6 +13,16 @@ data class SubscriptionRow(
     @SerialName("itunes_id") val itunesId: Long? = null,
     @SerialName("artwork_url") val artworkUrl: String? = null,
     val subscribed: Boolean,
+    @SerialName("updated_at_ms") val updatedAtMs: Long,
+    @SerialName("intro_skip_sec") val introSkipSec: Int? = null,
+    @SerialName("outro_skip_sec") val outroSkipSec: Int? = null
+)
+
+/** Row of the `settings` table: one JSON document of preferences per sync key. */
+@Serializable
+data class SettingsRow(
+    @SerialName("sync_key") val syncKey: String,
+    val settings: String,
     @SerialName("updated_at_ms") val updatedAtMs: Long
 )
 

@@ -19,6 +19,9 @@ class EpisodeRepository @Inject constructor(
     fun observeLatest(limit: Int = 100): Flow<List<Episode>> =
         episodeDao.observeLatest(limit).map { list -> list.map { it.toDomain(json) } }
 
+    fun observeFiltered(podcastId: Long?, query: String, limit: Int = 300): Flow<List<Episode>> =
+        episodeDao.observeFiltered(podcastId, query.trim(), limit).map { list -> list.map { it.toDomain(json) } }
+
     fun observeForPodcast(podcastId: Long): Flow<List<Episode>> =
         episodeDao.observeForPodcast(podcastId).map { list -> list.map { it.toDomain(json) } }
 

@@ -19,7 +19,9 @@ fun PodcastEntity.toDomain(): Podcast = Podcast(
     subscribedAt = subscribedAt,
     lastRefreshedAt = lastRefreshedAt,
     autoSkipAds = autoSkipAds,
-    autoDownload = autoDownload
+    autoDownload = autoDownload,
+    introSkipSec = introSkipSec,
+    outroSkipSec = outroSkipSec
 )
 
 fun EpisodeWithPodcast.toDomain(json: Json): Episode {

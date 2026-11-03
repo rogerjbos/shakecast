@@ -17,6 +17,12 @@ interface EpisodeDao {
     @Query("$WITH_PODCAST ORDER BY e.pubDateMs DESC LIMIT :limit")
     fun observeLatest(limit: Int): Flow<List<EpisodeWithPodcast>>
 
+    @Query(
+        "$WITH_PODCAST WHERE (:podcastId IS NULL OR e.podcastId = :podcastId) " +
+            "AND (:query = '' OR e.title LIKE '%' || :query || '%') ORDER BY e.pubDateMs DESC LIMIT :limit"
+    )
+    fun observeFiltered(podcastId: Long?, query: String, limit: Int): Flow<List<EpisodeWithPodcast>>
+
     @Query("$WITH_PODCAST WHERE e.podcastId = :podcastId ORDER BY e.pubDateMs DESC")
     fun observeForPodcast(podcastId: Long): Flow<List<EpisodeWithPodcast>>
 

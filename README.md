@@ -4,7 +4,9 @@ A glove-friendly Android podcast player. Shake the phone hard to skip ahead 30 s
 
 ## Features
 
-- Search podcasts via the iTunes Search API and subscribe.
+- Search podcasts via the iTunes Search API, or paste a feed address (private member feeds with credentials in the URL work too). Import and export subscriptions as OPML from Settings.
+- Android Auto: the car screen browses Downloads, Queue and Shows, and the next/previous buttons on cars, watches and Bluetooth units act as skip forward/back. Wear OS's built-in media controls show the same buttons for any active session.
+- Home filters: unplayed, in progress, downloaded or all; by show; and a title search.
 - Feeds refresh every few hours (WorkManager) and on pull-to-refresh.
 - The latest 3 episodes of each show download automatically on Wi-Fi and are deleted when played.
 - Background playback with Media3 and a media notification whose buttons are skip back / play-pause / skip forward.
@@ -17,6 +19,8 @@ A glove-friendly Android podcast player. Shake the phone hard to skip ahead 30 s
 - Sleep timer with a fade-out, including "end of episode".
 - Chapters from Podcasting 2.0 `<podcast:chapters>` JSON or ID3 CHAP frames: chapter list, previous/next buttons, ticks on the seek bar, optional shake-to-next-chapter, and chapters titled like ads are skipped automatically.
 - Trim silence and a volume boost of up to +9 dB.
+- Per-show intro and outro skip, synced with the subscription.
+- Settings sync: everything except the Supabase credentials follows you between phones, newest change wins.
 - Remembered manual skips: spans you skip by hand are saved per episode and skipped automatically next time, on every synced phone.
 - Automatic ad skipping: the phrase/regex detector from `podcast3r/skip_ads.py` is ported to Kotlin and runs on the feed's `<podcast:transcript>`. Blocks are only trusted when the transcript lines up with the local file, so dynamically inserted ads never cause content to be skipped.
 

@@ -25,6 +25,17 @@ create table if not exists public.episode_states (
   primary key (sync_key, feed_url, guid)
 );
 
+-- Per-show intro/outro skip lengths travel with the subscription (added later; safe to rerun).
+alter table public.subscriptions add column if not exists intro_skip_sec integer;
+alter table public.subscriptions add column if not exists outro_skip_sec integer;
+
+-- One JSON document of app settings per sync key.
+create table if not exists public.settings (
+  sync_key      text   primary key,
+  settings      text   not null,
+  updated_at_ms bigint not null
+);
+
 -- Spans the user skipped by hand, replayed automatically on every synced phone.
 create table if not exists public.manual_skips (
   sync_key      text   not null,
@@ -63,6 +74,12 @@ create trigger manual_skips_keep_newest
   before update on public.manual_skips
   for each row execute function public.shakecast_keep_newest();
 
+drop trigger if exists settings_keep_newest on public.settings;
+create trigger settings_keep_newest
+  before update on public.settings
+  for each row execute function public.shakecast_keep_newest();
+
+alter table public.settings       enable row level security;
 alter table public.subscriptions  enable row level security;
 alter table public.episode_states enable row level security;
 alter table public.manual_skips   enable row level security;
@@ -85,6 +102,13 @@ create policy "own sync key" on public.manual_skips
   using      (sync_key = current_setting('request.headers', true)::json->>'x-sync-key')
   with check (sync_key = current_setting('request.headers', true)::json->>'x-sync-key');
 
+drop policy if exists "own sync key" on public.settings;
+create policy "own sync key" on public.settings
+  for all to anon
+  using      (sync_key = current_setting('request.headers', true)::json->>'x-sync-key')
+  with check (sync_key = current_setting('request.headers', true)::json->>'x-sync-key');
+
+grant select, insert, update on public.settings       to anon;
 grant select, insert, update on public.subscriptions  to anon;
 grant select, insert, update on public.episode_states to anon;
 grant select, insert, update on public.manual_skips   to anon;

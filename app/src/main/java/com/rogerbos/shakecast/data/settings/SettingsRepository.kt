@@ -47,6 +47,8 @@ class SettingsRepository @Inject constructor(
         val shakeToNextChapter = booleanPreferencesKey("shakeToNextChapter")
         val lastSyncAtMs = longPreferencesKey("lastSyncAtMs")
         val lastSyncError = stringPreferencesKey("lastSyncError")
+        val settingsUpdatedAtMs = longPreferencesKey("settingsUpdatedAtMs")
+        val settingsDirty = booleanPreferencesKey("settingsDirty")
     }
 
     val settings: Flow<Settings> = context.settingsStore.data.map { p ->
@@ -96,9 +98,40 @@ class SettingsRepository @Inject constructor(
 
     suspend fun current(): Settings = settings.first()
 
+    /** Local change clock for settings sync. */
+    data class SettingsSyncState(val updatedAtMs: Long, val dirty: Boolean)
+
+    suspend fun syncState(): SettingsSyncState = context.settingsStore.data.first().let { p ->
+        SettingsSyncState(p[Keys.settingsUpdatedAtMs] ?: 0L, p[Keys.settingsDirty] ?: false)
+    }
+
+    suspend fun markSynced(upToMs: Long) {
+        context.settingsStore.edit { p -> if ((p[Keys.settingsUpdatedAtMs] ?: 0L) <= upToMs) p[Keys.settingsDirty] = false }
+    }
+
+    /** Applies settings from another device without marking them dirty. */
+    suspend fun applyRemote(remoteJson: String, updatedAtMs: Long) {
+        val merged = SettingsSync.merge(current(), remoteJson)
+        write(merged) { p ->
+            p[Keys.settingsUpdatedAtMs] = updatedAtMs
+            p[Keys.settingsDirty] = false
+        }
+    }
+
     suspend fun update(transform: (Settings) -> Settings) {
+        val before = current()
+        val next = transform(before)
+        write(next) { p ->
+            if (SettingsSync.toRemoteJson(next) != SettingsSync.toRemoteJson(before)) {
+                p[Keys.settingsUpdatedAtMs] = System.currentTimeMillis()
+                p[Keys.settingsDirty] = true
+            }
+        }
+    }
+
+    private suspend fun write(next: Settings, extra: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
         context.settingsStore.edit { p ->
-            val next = transform(settings.first())
+            extra(p)
             p[Keys.skipForwardSec] = next.skipForwardSec
             p[Keys.skipBackSec] = next.skipBackSec
             p[Keys.shakeEnabled] = next.shakeEnabled

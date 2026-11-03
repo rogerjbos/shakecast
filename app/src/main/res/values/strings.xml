@@ -23,6 +23,16 @@
 
     <string name="home_up_next">Up next</string>
     <string name="home_queue">Queue</string>
+    <string name="library_downloads">Downloads</string>
+    <string name="library_queue">Queue</string>
+    <string name="library_shows">Shows</string>
+    <string name="home_episodes">Episodes</string>
+    <string name="home_search_episodes">Search episodes</string>
+    <string name="home_all_shows">All shows</string>
+    <string name="home_filter_unplayed">Unplayed</string>
+    <string name="home_filter_in_progress">In progress</string>
+    <string name="home_filter_downloaded">Downloaded</string>
+    <string name="home_filter_all">All</string>
     <string name="queue_play_next">Play next</string>
     <string name="queue_add">Add to queue</string>
     <string name="queue_remove">Remove from queue</string>
@@ -43,7 +53,7 @@
     <string name="home_find_podcasts">Find podcasts</string>
 
     <string name="search_title">Search</string>
-    <string name="search_hint">Podcast name</string>
+    <string name="search_hint">Show name, or paste a feed address</string>
     <string name="search_subscribe">Subscribe</string>
     <string name="search_subscribed">Subscribed</string>
     <string name="search_error">Search failed: %1$s</string>
@@ -52,6 +62,9 @@
     <string name="podcast_unsubscribe_body">Downloaded episodes of this show will be deleted.</string>
     <string name="podcast_auto_skip_ads">Auto-skip ads for this show</string>
     <string name="podcast_auto_download">Auto-download new episodes</string>
+    <string name="podcast_intro_skip">Skip intro</string>
+    <string name="podcast_outro_skip">Skip outro</string>
+    <string name="podcast_seconds">%1$d s</string>
     <string name="episode_mark_played">Mark as played</string>
     <string name="episode_mark_unplayed">Mark as unplayed</string>
     <string name="episode_delete_download">Delete download</string>
@@ -103,6 +116,18 @@
     <string name="settings_auto_delete">Delete when played</string>
     <string name="settings_refresh_interval">Refresh every (hours)</string>
     <string name="settings_refresh_now">Refresh now</string>
+    <string name="settings_section_subscriptions">Subscriptions</string>
+    <string name="opml_import">Import OPML</string>
+    <string name="opml_export">Export OPML</string>
+    <string name="opml_empty">No feeds found in that file.</string>
+    <string name="opml_error">Import failed: %1$s</string>
+    <string name="opml_progress">Importing %1$d of %2$d…</string>
+    <string name="opml_done">Imported %1$d new, %2$d already subscribed, %3$d failed.</string>
+    <string name="opml_exported">Subscriptions exported.</string>
+    <string name="opml_export_failed">Export failed.</string>
+    <string name="search_add_feed_title">Add podcast from feed address</string>
+    <string name="search_add_feed">Add</string>
+    <string name="search_added_feed">Subscribed to %1$s</string>
     <string name="settings_section_sync">Sync between phones</string>
     <string name="settings_sync_help">Keeps subscriptions, play positions and played episodes in step across your phones through a Supabase project. Create the tables with supabase/schema.sql from the repo, then enter the same project URL, API key and sync key on every phone.</string>
     <string name="settings_sync_enabled">Sync enabled</string>

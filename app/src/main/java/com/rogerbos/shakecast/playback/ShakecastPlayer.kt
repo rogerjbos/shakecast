@@ -12,9 +12,10 @@ import com.google.common.util.concurrent.ListenableFuture
 import androidx.media3.common.ForwardingSimpleBasePlayer
 
 /**
- * Wraps ExoPlayer to apply tunable seek increments, hide next/previous track
- * commands, and optionally present itself as a remote-volume device so that
- * hardware volume keys reach [VolumeChordDetector] while the screen is off.
+ * Wraps ExoPlayer to apply tunable seek increments, advertise next/previous
+ * (which the session callback turns into skips, so car and watch buttons work),
+ * and optionally present itself as a remote-volume device so that hardware
+ * volume keys reach [VolumeChordDetector] while the screen is off.
  */
 @UnstableApi
 class ShakecastPlayer(
@@ -46,12 +47,8 @@ class ShakecastPlayer(
     override fun getState(): State {
         val base = super.getState()
         val commands = base.availableCommands.buildUpon()
-            .removeAll(
-                Player.COMMAND_SEEK_TO_NEXT,
-                Player.COMMAND_SEEK_TO_PREVIOUS,
-                Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
-                Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM
-            )
+            .removeAll(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM, Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+            .apply { if (base.playlist.isNotEmpty()) addAll(Player.COMMAND_SEEK_TO_NEXT, Player.COMMAND_SEEK_TO_PREVIOUS) }
         val builder = base.buildUpon()
             .setSeekForwardIncrementMs(skipForwardMs)
             .setSeekBackIncrementMs(skipBackMs)

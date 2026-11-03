@@ -16,8 +16,8 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
+import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
-import androidx.media3.session.MediaSessionService
 import com.rogerbos.shakecast.MainActivity
 import com.rogerbos.shakecast.R
 import com.rogerbos.shakecast.data.repository.EpisodeRepository
@@ -29,6 +29,7 @@ import com.rogerbos.shakecast.data.settings.SettingsRepository
 import com.rogerbos.shakecast.data.sync.SyncEngine
 import com.rogerbos.shakecast.data.sync.SyncScheduler
 import com.rogerbos.shakecast.domain.ads.ChapterAds
+import com.rogerbos.shakecast.domain.model.AdBlock
 import com.rogerbos.shakecast.domain.model.AdSource
 import com.rogerbos.shakecast.domain.model.Chapter
 import com.rogerbos.shakecast.domain.usecase.MarkEpisodePlayed
@@ -52,7 +53,7 @@ import kotlin.math.abs
 
 @UnstableApi
 @AndroidEntryPoint
-class PlaybackService : MediaSessionService() {
+class PlaybackService : MediaLibraryService() {
 
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var episodeRepository: EpisodeRepository
@@ -67,13 +68,14 @@ class PlaybackService : MediaSessionService() {
     @Inject lateinit var queueRepository: QueueRepository
     @Inject lateinit var manualSkipRepository: ManualSkipRepository
     @Inject lateinit var pickNextEpisode: PickNextEpisode
+    @Inject lateinit var libraryTree: LibraryTree
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val handler = Handler(Looper.getMainLooper())
 
     private lateinit var exoPlayer: ExoPlayer
     private lateinit var player: ShakecastPlayer
-    private var mediaSession: MediaSession? = null
+    private var mediaSession: MediaLibrarySession? = null
     private lateinit var shakeDetector: ShakeDetector
     private lateinit var accelerometer: AccelerometerSource
     private lateinit var adSkip: AdSkipController
@@ -150,7 +152,14 @@ class PlaybackService : MediaSessionService() {
                     else -> sleepTimer.cancel()
                 }
             },
-            jumpChapter = ::jumpChapter
+            jumpChapter = ::jumpChapter,
+            libraryTree = libraryTree,
+            libraryLabels = LibraryTree.Labels(
+                downloads = getString(R.string.library_downloads),
+                queue = getString(R.string.library_queue),
+                shows = getString(R.string.library_shows),
+                appName = getString(R.string.app_name)
+            )
         )
 
         val sessionActivity = PendingIntent.getActivity(
@@ -163,8 +172,7 @@ class PlaybackService : MediaSessionService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        mediaSession = MediaSession.Builder(this, player)
-            .setCallback(callback)
+        mediaSession = MediaLibrarySession.Builder(this, player, callback)
             .setSessionActivity(sessionActivity)
             .setMediaButtonPreferences(buttonPreferences(settings))
             .build()
@@ -200,6 +208,7 @@ class PlaybackService : MediaSessionService() {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 flushRecordedSkips(force = true)
                 loadBlocksFor(mediaItem?.mediaId)
+                skipIntroIfAtStart(mediaItem?.mediaId)
                 mediaItemFactory.episodeId(mediaItem?.mediaId)?.let { id -> scope.launch { queueRepository.remove(id) } }
                 syncScheduler.enqueueSoon()
             }
@@ -287,13 +296,33 @@ class PlaybackService : MediaSessionService() {
                 currentChapters = episode.chapters
                 val knownDurationSec = episode.durationSec?.toDouble() ?: player.duration.takeIf { it != C.TIME_UNSET }?.let { it / 1000.0 }
                 val chapterAds = ChapterAds.blocks(episode.chapters, knownDurationSec)
-                adSkip.setBlocks(mediaId, (if (usable) episode.adBlocks else emptyList()) + manual + chapterAds)
+                val outro = outroBlock(podcast?.outroSkipSec ?: 0, knownDurationSec)
+                adSkip.setBlocks(mediaId, (if (usable) episode.adBlocks else emptyList()) + manual + chapterAds + outro)
                 if (!episode.chaptersResolved) launch(Dispatchers.IO) { resolveChapters.resolve(id) }
                 if (episode.adBlocks.isEmpty() && (episode.adSource == AdSource.NONE || episode.adSource == AdSource.MISALIGNED)) {
                     val durationSec = player.duration.takeIf { it != C.TIME_UNSET }?.let { it / 1000.0 }
                     val force = episode.adSource == AdSource.MISALIGNED
                     launch(Dispatchers.IO) { resolveAdBlocks.resolve(id, force = force, actualDurationSecOverride = durationSec) }
                 }
+            }
+        }
+    }
+
+    /** A per-show outro is modelled as a final ad block, so crossing into it ends the episode. */
+    private fun outroBlock(outroSkipSec: Int, durationSec: Double?): List<AdBlock> {
+        if (outroSkipSec <= 0 || durationSec == null || durationSec <= outroSkipSec) return emptyList()
+        return listOf(AdBlock(durationSec - outroSkipSec, durationSec, OUTRO_REASON))
+    }
+
+    private fun skipIntroIfAtStart(mediaId: String?) {
+        val id = mediaItemFactory.episodeId(mediaId) ?: return
+        scope.launch {
+            val episode = episodeRepository.get(id) ?: return@launch
+            val introMs = (podcastRepository.get(episode.podcastId)?.introSkipSec ?: 0) * 1000L
+            if (introMs <= 0 || player.currentMediaItem?.mediaId != mediaId) return@launch
+            if (player.currentPosition < introMs) {
+                Timber.i("Skipping %d ms intro of %s", introMs, episode.podcastTitle)
+                player.seekTo(introMs)
             }
         }
     }
@@ -334,7 +363,7 @@ class PlaybackService : MediaSessionService() {
         haptics.heavyClick()
         val from = player.currentPosition
         player.seekForward()
-        Timber.i("skip source=%s forward=%dms", source, player.skipForwardMs)
+        Timber.i("skip source=%s forward=%dms from=%d to=%d", source, player.skipForwardMs, from, player.currentPosition)
         recordSkip { id, now -> skipRecorder.onSkipForward(id, from, player.currentPosition, now) }
     }
 
@@ -342,7 +371,7 @@ class PlaybackService : MediaSessionService() {
         haptics.heavyClick()
         val from = player.currentPosition
         player.seekBack()
-        Timber.i("skip source=%s back=%dms", source, player.skipBackMs)
+        Timber.i("skip source=%s back=%dms from=%d to=%d", source, player.skipBackMs, from, player.currentPosition)
         recordSkip { id, now -> skipRecorder.onSkipBack(id, from, player.currentPosition, now); null }
     }
 
@@ -385,7 +414,7 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = mediaSession
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         if (!player.playWhenReady || player.mediaItemCount == 0 || player.playbackState == Player.STATE_ENDED) {
@@ -412,5 +441,6 @@ class PlaybackService : MediaSessionService() {
         const val REMOTE_SEEK_TOLERANCE_MS = 3_000L
         const val SKIP_FLUSH_DELAY_MS = 10_500L
         const val MIN_RECORDED_SPAN_MS = 15_000L
+        const val OUTRO_REASON = "outro"
     }
 }

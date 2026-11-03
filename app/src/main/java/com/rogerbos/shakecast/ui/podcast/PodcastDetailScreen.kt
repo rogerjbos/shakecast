@@ -22,6 +22,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -95,6 +96,16 @@ fun PodcastDetailScreen(
                             checked = podcast.autoDownload,
                             onCheckedChange = viewModel::setAutoDownload
                         )
+                        SecondsRow(
+                            label = stringResource(R.string.podcast_intro_skip),
+                            value = podcast.introSkipSec,
+                            onChange = { v -> viewModel.setIntroOutro(v, podcast.outroSkipSec) }
+                        )
+                        SecondsRow(
+                            label = stringResource(R.string.podcast_outro_skip),
+                            value = podcast.outroSkipSec,
+                            onChange = { v -> viewModel.setIntroOutro(podcast.introSkipSec, v) }
+                        )
                         HorizontalDivider()
                     }
                 }
@@ -160,6 +171,23 @@ fun PodcastDetailScreen(
             },
             dismissButton = { TextButton(onClick = { confirmUnsubscribe = false }) { Text(stringResource(R.string.cancel)) } }
         )
+    }
+}
+
+@Composable
+private fun SecondsRow(label: String, value: Int, onChange: (Int) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+        OutlinedButton(onClick = { onChange((value - 5).coerceAtLeast(0)) }, enabled = value > 0) { Text("-") }
+        Text(
+            stringResource(R.string.podcast_seconds, value),
+            modifier = Modifier.padding(horizontal = 12.dp),
+            style = MaterialTheme.typography.titleMedium
+        )
+        OutlinedButton(onClick = { onChange((value + 5).coerceAtMost(600)) }, enabled = value < 600) { Text("+") }
     }
 }
 

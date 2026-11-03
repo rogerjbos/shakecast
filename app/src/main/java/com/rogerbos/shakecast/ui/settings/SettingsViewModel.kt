@@ -10,6 +10,9 @@ import com.rogerbos.shakecast.data.settings.Settings
 import com.rogerbos.shakecast.data.settings.SettingsRepository
 import com.rogerbos.shakecast.data.settings.ShakeSensitivity
 import com.rogerbos.shakecast.data.sync.SyncScheduler
+import com.rogerbos.shakecast.domain.usecase.ExportOpml
+import com.rogerbos.shakecast.domain.usecase.ImportOpml
+import java.io.Reader
 import com.rogerbos.shakecast.playback.AccelerometerSource
 import com.rogerbos.shakecast.playback.ShakeConfig
 import com.rogerbos.shakecast.playback.ShakeDetector
@@ -37,11 +40,12 @@ data class SettingsUiState(
     val shakeTest: ShakeTestState,
     val syncTestResult: String?,
     val syncStatus: SettingsRepository.SyncStatus,
-    val syncing: Boolean
+    val syncing: Boolean,
+    val opmlStatus: String?
 ) {
     companion object {
         val EMPTY = SettingsUiState(
-            Settings.DEFAULT, ShakeTestState(false, 0f, 0, 0), null, SettingsRepository.SyncStatus(null, null), false
+            Settings.DEFAULT, ShakeTestState(false, 0f, 0, 0), null, SettingsRepository.SyncStatus(null, null), false, null
         )
     }
 }
@@ -52,8 +56,12 @@ class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val refreshScheduler: RefreshScheduler,
     private val syncScheduler: SyncScheduler,
-    private val syncApi: SupabaseSyncApi
+    private val syncApi: SupabaseSyncApi,
+    private val importOpml: ImportOpml,
+    private val exportOpml: ExportOpml
 ) : ViewModel() {
+
+    private val opmlStatus = MutableStateFlow<String?>(null)
 
     private val shakeTest = MutableStateFlow(ShakeTestState(false, 0f, 0, 0))
     private val syncTestResult = MutableStateFlow<String?>(null)
@@ -63,14 +71,15 @@ class SettingsViewModel @Inject constructor(
 
     val state: StateFlow<SettingsUiState> = combine(
         settingsRepository.settings, shakeTest, syncTestResult,
-        settingsRepository.syncStatus, syncScheduler.isSyncing()
-    ) { settings, shake, syncTest, syncStatus, syncing ->
+        settingsRepository.syncStatus, syncScheduler.isSyncing(), opmlStatus
+    ) { values ->
         SettingsUiState(
-            settings = settings,
-            shakeTest = shake,
-            syncTestResult = syncTest,
-            syncStatus = syncStatus,
-            syncing = syncing
+            settings = values[0] as Settings,
+            shakeTest = values[1] as ShakeTestState,
+            syncTestResult = values[2] as String?,
+            syncStatus = values[3] as SettingsRepository.SyncStatus,
+            syncing = values[4] as Boolean,
+            opmlStatus = values[5] as String?
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState.EMPTY)
 
@@ -86,11 +95,43 @@ class SettingsViewModel @Inject constructor(
                 syncScheduler.enqueueNow()
             } else if (!next.syncEnabled && before.syncEnabled) {
                 syncScheduler.cancelPeriodic()
+            } else if (next.syncEnabled) {
+                syncScheduler.enqueueSoon(delaySeconds = 20)
             }
         }
     }
 
     fun refreshNow() = refreshScheduler.enqueueNow()
+
+    /** Parses and subscribes; progress and the final tally are published through [SettingsUiState.opmlStatus]. */
+    fun importOpml(reader: Reader, strings: OpmlStrings) {
+        viewModelScope.launch {
+            val feeds = withContext(Dispatchers.IO) { importOpml.parse(reader) }.getOrElse {
+                opmlStatus.value = strings.error(it.message ?: it.javaClass.simpleName)
+                return@launch
+            }
+            if (feeds.isEmpty()) {
+                opmlStatus.value = strings.empty
+                return@launch
+            }
+            opmlStatus.value = strings.progress(0, feeds.size)
+            val report = importOpml.import(feeds) { done, total -> opmlStatus.value = strings.progress(done, total) }
+            opmlStatus.value = strings.done(report.added, report.alreadySubscribed, report.failed)
+            syncScheduler.enqueueSoon()
+        }
+    }
+
+    suspend fun exportOpmlText(): String = exportOpml()
+
+    fun setOpmlStatus(text: String?) { opmlStatus.value = text }
+
+    /** Localised messages supplied by the screen so the view model stays free of resources. */
+    class OpmlStrings(
+        val empty: String,
+        val error: (String) -> String,
+        val progress: (Int, Int) -> String,
+        val done: (added: Int, skipped: Int, failed: Int) -> String
+    )
 
     fun syncNow() = syncScheduler.enqueueNow()
 

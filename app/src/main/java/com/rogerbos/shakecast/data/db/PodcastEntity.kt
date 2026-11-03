@@ -22,5 +22,9 @@ data class PodcastEntity(
     val autoDownload: Boolean,
     /** Last local or remote change to the subscription itself, for last-writer-wins sync. */
     @ColumnInfo(defaultValue = "0") val subscriptionUpdatedAtMs: Long = 0,
-    @ColumnInfo(defaultValue = "1") val syncDirty: Boolean = true
+    @ColumnInfo(defaultValue = "1") val syncDirty: Boolean = true,
+    /** Seconds to jump past when an episode starts from the beginning. */
+    @ColumnInfo(defaultValue = "0") val introSkipSec: Int = 0,
+    /** Seconds before the end at which the episode counts as finished. */
+    @ColumnInfo(defaultValue = "0") val outroSkipSec: Int = 0
 )

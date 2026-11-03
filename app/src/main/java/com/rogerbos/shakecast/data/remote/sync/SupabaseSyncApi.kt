@@ -40,6 +40,12 @@ class SupabaseSyncApi @Inject constructor(
     fun pullManualSkips(config: SupabaseConfig): Result<List<ManualSkipRow>> =
         pullAll(config, MANUAL_SKIPS) { json.decodeFromString<List<ManualSkipRow>>(it) }
 
+    fun pushSettings(config: SupabaseConfig, row: SettingsRow): Result<Unit> =
+        upsert(config, SETTINGS, json.encodeToString(listOf(row)))
+
+    fun pullSettings(config: SupabaseConfig): Result<SettingsRow?> =
+        pullAll(config, SETTINGS) { json.decodeFromString<List<SettingsRow>>(it) }.map { it.firstOrNull() }
+
     /** Reads one row to confirm the URL, key, tables and policies are all in place. */
     fun ping(config: SupabaseConfig): Result<String> = runCatching {
         val url = tableUrl(config, SUBSCRIPTIONS).newBuilder()
@@ -112,6 +118,7 @@ class SupabaseSyncApi @Inject constructor(
         const val SUBSCRIPTIONS = "subscriptions"
         const val EPISODE_STATES = "episode_states"
         const val MANUAL_SKIPS = "manual_skips"
+        const val SETTINGS = "settings"
         const val PAGE = 1000
         val JSON = "application/json".toMediaType()
     }
