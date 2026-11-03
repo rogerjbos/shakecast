@@ -9,7 +9,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
+import com.rogerbos.shakecast.BuildConfig
+import com.rogerbos.shakecast.data.crash.CrashReporting
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -247,6 +253,7 @@ fun SettingsScreen(
             }
             when (val message = state.auth.message) {
                 AuthMessage.ConfirmEmail -> HelpText(stringResource(R.string.settings_auth_confirm_email))
+                AuthMessage.AccountDeleted -> HelpText(stringResource(R.string.settings_account_deleted))
                 is AuthMessage.Error -> HelpText(message.text)
                 null -> Unit
             }
@@ -264,6 +271,39 @@ fun SettingsScreen(
                 Spacer(Modifier.width(16.dp))
                 Text(syncStatusText(state.syncStatus), style = MaterialTheme.typography.bodySmall)
             }
+            if (session != null) {
+                var confirmDelete by remember { mutableStateOf(false) }
+                TextButton(
+                    onClick = { confirmDelete = true },
+                    enabled = !state.auth.busy,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                ) { Text(stringResource(R.string.settings_delete_account), color = MaterialTheme.colorScheme.error) }
+                if (confirmDelete) {
+                    AlertDialog(
+                        onDismissRequest = { confirmDelete = false },
+                        title = { Text(stringResource(R.string.settings_delete_account)) },
+                        text = { Text(stringResource(R.string.settings_delete_account_body)) },
+                        confirmButton = {
+                            TextButton(onClick = { confirmDelete = false; viewModel.deleteAccount() }) {
+                                Text(stringResource(R.string.settings_delete_account_confirm), color = MaterialTheme.colorScheme.error)
+                            }
+                        },
+                        dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.cancel)) } }
+                    )
+                }
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            SectionHeader(stringResource(R.string.settings_section_about))
+            HelpText(stringResource(R.string.settings_version, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE))
+            if (CrashReporting.available) {
+                SwitchRow(stringResource(R.string.settings_crash_reports), s.crashReportsEnabled) { v -> viewModel.update { it.copy(crashReportsEnabled = v) } }
+                HelpText(stringResource(R.string.settings_crash_reports_help))
+            }
+            TextButton(
+                onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(context.getString(R.string.privacy_policy_url)))) },
+                modifier = Modifier.padding(horizontal = 8.dp)
+            ) { Text(stringResource(R.string.settings_privacy_policy)) }
         }
     }
 }

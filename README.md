@@ -33,6 +33,8 @@ Requires JDK 17 or 21 and Android SDK platform 36.
 ./gradlew testDebugUnitTest
 ```
 
+Release builds are shrunk by R8 (names are kept, since the code is public) and signed with the upload key described in [docs/RELEASE.md](docs/RELEASE.md), which also covers versioning, the Play listing, and opt-in crash reporting through Sentry. The privacy policy is in [PRIVACY.md](PRIVACY.md) and linked from Settings > About.
+
 ## Install
 
 ```bash

@@ -24,6 +24,7 @@ mockk = "1.14.2"
 androidJunit = "1.3.0"
 espressoCore = "3.7.0"
 kxml2 = "2.3.0"
+sentry = "8.61.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
@@ -68,6 +69,7 @@ mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidJunit" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 kxml2 = { group = "net.sf.kxml", name = "kxml2", version.ref = "kxml2" }
+sentry-android-core = { group = "io.sentry", name = "sentry-android-core", version.ref = "sentry" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

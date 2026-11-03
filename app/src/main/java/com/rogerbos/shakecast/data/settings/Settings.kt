@@ -31,7 +31,8 @@ data class Settings(
     val rememberManualSkips: Boolean,
     val trimSilence: Boolean,
     val volumeBoostDb: Int,
-    val shakeToNextChapter: Boolean
+    val shakeToNextChapter: Boolean,
+    val crashReportsEnabled: Boolean
 ) {
     companion object {
         val DEFAULT = Settings(
@@ -54,7 +55,8 @@ data class Settings(
             rememberManualSkips = true,
             trimSilence = false,
             volumeBoostDb = 0,
-            shakeToNextChapter = false
+            shakeToNextChapter = false,
+            crashReportsEnabled = false
         )
     }
 }

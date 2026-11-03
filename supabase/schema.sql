@@ -134,3 +134,12 @@ grant select, insert, update on public.subscriptions  to authenticated;
 grant select, insert, update on public.episode_states to authenticated;
 grant select, insert, update on public.manual_skips   to authenticated;
 grant select, insert, update on public.settings       to authenticated;
+
+-- In-app account deletion (required by Google Play for apps with sign-up). Runs as the
+-- function owner so it may delete from auth.users; the rows above cascade away.
+create or replace function public.delete_account() returns void
+language sql security definer set search_path = '' as $$
+  delete from auth.users where id = auth.uid();
+$$;
+revoke all on function public.delete_account() from public, anon;
+grant execute on function public.delete_account() to authenticated;

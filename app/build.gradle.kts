@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -10,6 +11,21 @@ plugins {
     alias(libs.plugins.dagger.hilt)
 }
 
+fun prop(name: String, env: String): String? =
+    (project.findProperty(name) as String?)?.takeIf { it.isNotBlank() } ?: System.getenv(env)?.takeIf { it.isNotBlank() }
+
+// Release signing comes from keystore.properties (see scripts/make-keystore.sh) or the
+// SHAKECAST_KEYSTORE* environment variables; without either, release builds are unsigned.
+val keystoreProps = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+val releaseStoreFile = keystoreProps.getProperty("storeFile") ?: System.getenv("SHAKECAST_KEYSTORE")
+val releaseStorePassword = keystoreProps.getProperty("storePassword") ?: System.getenv("SHAKECAST_KEYSTORE_PASSWORD")
+val releaseKeyAlias = keystoreProps.getProperty("keyAlias") ?: System.getenv("SHAKECAST_KEY_ALIAS")
+val releaseKeyPassword = keystoreProps.getProperty("keyPassword") ?: System.getenv("SHAKECAST_KEY_PASSWORD")
+val hasReleaseSigning = !releaseStoreFile.isNullOrBlank() && !releaseStorePassword.isNullOrBlank() && !releaseKeyAlias.isNullOrBlank()
+
 android {
     namespace = "com.rogerbos.shakecast"
     compileSdk = 36
@@ -17,10 +33,22 @@ android {
     defaultConfig {
         applicationId = "com.rogerbos.shakecast"
         minSdk = 29
-        targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        targetSdk = 36
+        versionCode = (project.property("shakecast.versionCode") as String).toInt()
+        versionName = project.property("shakecast.versionName") as String
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "SENTRY_DSN", "\"${prop("shakecast.sentryDsn", "SHAKECAST_SENTRY_DSN") ?: ""}\"")
+    }
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = rootProject.file(releaseStoreFile!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword ?: releaseStorePassword
+            }
+        }
     }
 
     buildTypes {
@@ -28,8 +56,10 @@ android {
             applicationIdSuffix = ".debug"
         }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (hasReleaseSigning) signingConfig = signingConfigs.getByName("release")
         }
     }
 
@@ -107,6 +137,7 @@ dependencies {
     implementation(libs.hilt.navigation.compose)
 
     implementation(libs.jakewharton.timber)
+    implementation(libs.sentry.android.core)
 
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

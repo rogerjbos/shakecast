@@ -7,10 +7,10 @@ import kotlinx.serialization.json.jsonObject
 
 /**
  * Converts settings to and from the JSON document shared between devices.
- * Sync credentials never leave the device; unknown keys from newer builds are ignored.
+ * Sync credentials and the crash-report consent never leave the device; unknown keys from newer builds are ignored.
  */
 object SettingsSync {
-    val localOnlyKeys = setOf("syncEnabled", "supabaseUrl", "supabaseKey")
+    val localOnlyKeys = setOf("syncEnabled", "supabaseUrl", "supabaseKey", "crashReportsEnabled")
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 

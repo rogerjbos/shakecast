@@ -44,6 +44,7 @@ class SettingsRepository @Inject constructor(
         val trimSilence = booleanPreferencesKey("trimSilence")
         val volumeBoostDb = intPreferencesKey("volumeBoostDb")
         val shakeToNextChapter = booleanPreferencesKey("shakeToNextChapter")
+        val crashReportsEnabled = booleanPreferencesKey("crashReportsEnabled")
         val lastSyncAtMs = longPreferencesKey("lastSyncAtMs")
         val lastSyncError = stringPreferencesKey("lastSyncError")
         val settingsUpdatedAtMs = longPreferencesKey("settingsUpdatedAtMs")
@@ -72,7 +73,8 @@ class SettingsRepository @Inject constructor(
             rememberManualSkips = p[Keys.rememberManualSkips] ?: d.rememberManualSkips,
             trimSilence = p[Keys.trimSilence] ?: d.trimSilence,
             volumeBoostDb = p[Keys.volumeBoostDb] ?: d.volumeBoostDb,
-            shakeToNextChapter = p[Keys.shakeToNextChapter] ?: d.shakeToNextChapter
+            shakeToNextChapter = p[Keys.shakeToNextChapter] ?: d.shakeToNextChapter,
+            crashReportsEnabled = p[Keys.crashReportsEnabled] ?: d.crashReportsEnabled
         )
     }
 
@@ -158,6 +160,7 @@ class SettingsRepository @Inject constructor(
             p[Keys.trimSilence] = next.trimSilence
             p[Keys.volumeBoostDb] = next.volumeBoostDb
             p[Keys.shakeToNextChapter] = next.shakeToNextChapter
+            p[Keys.crashReportsEnabled] = next.crashReportsEnabled
         }
     }
 }

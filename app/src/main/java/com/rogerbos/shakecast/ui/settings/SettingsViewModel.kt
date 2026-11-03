@@ -42,6 +42,7 @@ data class AuthUiState(val session: AuthSession?, val busy: Boolean, val message
 
 sealed interface AuthMessage {
     data object ConfirmEmail : AuthMessage
+    data object AccountDeleted : AuthMessage
     data class Error(val text: String) : AuthMessage
 }
 
@@ -185,6 +186,17 @@ class SettingsViewModel @Inject constructor(
         syncScheduler.cancelPeriodic()
         syncTestResult.value = null
         null
+    }
+
+    fun deleteAccount() = authRequest {
+        authManager.deleteAccount().fold(
+            onSuccess = {
+                syncScheduler.cancelPeriodic()
+                syncTestResult.value = null
+                AuthMessage.AccountDeleted
+            },
+            onFailure = { AuthMessage.Error(it.message ?: it.javaClass.simpleName) }
+        )
     }
 
     private fun authRequest(block: suspend () -> AuthMessage?) {

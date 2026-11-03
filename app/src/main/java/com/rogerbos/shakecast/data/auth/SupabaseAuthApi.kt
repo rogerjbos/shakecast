@@ -24,7 +24,7 @@ class AuthException(val code: Int, message: String) : Exception(message)
 
 /**
  * Minimal client for the Supabase Auth (GoTrue) REST endpoints the app needs:
- * email + password sign-up and sign-in, token refresh and sign-out.
+ * email + password sign-up and sign-in, token refresh, sign-out and account deletion.
  */
 class SupabaseAuthApi @Inject constructor(
     private val client: OkHttpClient,
@@ -54,6 +54,19 @@ class SupabaseAuthApi @Inject constructor(
         val request = request(url, apiKey, "logout")
             .header("Authorization", "Bearer ${session.accessToken}")
             .post(ByteArray(0).toRequestBody(JSON))
+            .build()
+        call(request)
+        Unit
+    }
+
+    /** Calls the `delete_account` database function, which removes the user and, by cascade, every row they own. */
+    fun deleteAccount(url: String, apiKey: String, session: AuthSession): Result<Unit> = runCatching {
+        val base = url.trim().trimEnd('/').toHttpUrlOrNull() ?: throw IllegalArgumentException("Invalid Supabase URL: $url")
+        val request = Request.Builder().url(base.newBuilder().addPathSegments("rest/v1/rpc/delete_account").build())
+            .header("apikey", apiKey.trim())
+            .header("Authorization", "Bearer ${session.accessToken}")
+            .header("Content-Type", "application/json")
+            .post("{}".toRequestBody(JSON))
             .build()
         call(request)
         Unit

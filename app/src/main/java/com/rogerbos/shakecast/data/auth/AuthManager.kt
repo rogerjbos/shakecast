@@ -56,6 +56,17 @@ class AuthManager @Inject constructor(
         store.clear()
     }
 
+    /** Deletes the account and all of its rows on the server, then forgets the session locally. */
+    suspend fun deleteAccount(): Result<Unit> = withContext(io) {
+        runCatching {
+            val s = settingsRepository.current()
+            val session = validSession(s.supabaseUrl, s.supabaseKey)
+            api.deleteAccount(s.supabaseUrl, s.supabaseKey, session).getOrThrow()
+            store.clear()
+            Timber.i("Account deleted")
+        }
+    }
+
     /**
      * Connection details with a fresh access token, refreshing it first when it is
      * about to expire. Fails with [NotSignedInException] when there is no usable session.
