@@ -25,7 +25,10 @@ data class Settings(
     val supabaseKey: String,
     val syncKey: String,
     val autoPlayNext: Boolean,
-    val rememberManualSkips: Boolean
+    val rememberManualSkips: Boolean,
+    val trimSilence: Boolean,
+    val volumeBoostDb: Int,
+    val shakeToNextChapter: Boolean
 ) {
     companion object {
         val DEFAULT = Settings(
@@ -46,7 +49,10 @@ data class Settings(
             supabaseKey = "",
             syncKey = "",
             autoPlayNext = true,
-            rememberManualSkips = true
+            rememberManualSkips = true,
+            trimSilence = false,
+            volumeBoostDb = 0,
+            shakeToNextChapter = false
         )
     }
 }

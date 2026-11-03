@@ -15,6 +15,8 @@ A glove-friendly Android podcast player. Shake the phone hard to skip ahead 30 s
   - **Big button**: the bottom third of the Now Playing screen is one large skip button.
 - Queue and continuous play: "Play next" or "Add to queue" from any episode's menu; when an episode ends the queue plays, then the newest unplayed download.
 - Sleep timer with a fade-out, including "end of episode".
+- Chapters from Podcasting 2.0 `<podcast:chapters>` JSON or ID3 CHAP frames: chapter list, previous/next buttons, ticks on the seek bar, optional shake-to-next-chapter, and chapters titled like ads are skipped automatically.
+- Trim silence and a volume boost of up to +9 dB.
 - Remembered manual skips: spans you skip by hand are saved per episode and skipped automatically next time, on every synced phone.
 - Automatic ad skipping: the phrase/regex detector from `podcast3r/skip_ads.py` is ported to Kotlin and runs on the feed's `<podcast:transcript>`. Blocks are only trusted when the transcript lines up with the local file, so dynamically inserted ads never cause content to be skipped.
 

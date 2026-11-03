@@ -33,7 +33,8 @@ class ShakecastSessionCallback(
     private val skipForward: (source: String) -> Unit,
     private val skipBack: (source: String) -> Unit,
     private val toggleAutoSkip: () -> Unit,
-    private val setSleepTimer: (minutes: Int) -> Unit
+    private val setSleepTimer: (minutes: Int) -> Unit,
+    private val jumpChapter: (direction: Int) -> Unit
 ) : MediaSession.Callback {
 
     override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): ConnectionResult {
@@ -56,6 +57,8 @@ class ShakecastSessionCallback(
             PlaybackCommands.ACTION_SKIP_BACK -> skipBack("custom-command")
             PlaybackCommands.ACTION_TOGGLE_AUTO_SKIP -> toggleAutoSkip()
             PlaybackCommands.ACTION_SET_SLEEP_TIMER -> setSleepTimer(args.getInt(PlaybackCommands.ARG_SLEEP_MINUTES, 0))
+            PlaybackCommands.ACTION_NEXT_CHAPTER -> jumpChapter(1)
+            PlaybackCommands.ACTION_PREVIOUS_CHAPTER -> jumpChapter(-1)
             else -> return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
         }
         return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))

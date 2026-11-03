@@ -3,6 +3,7 @@ package com.rogerbos.shakecast.data.repository
 import com.rogerbos.shakecast.data.db.EpisodeDao
 import com.rogerbos.shakecast.domain.model.AdBlock
 import com.rogerbos.shakecast.domain.model.AdSource
+import com.rogerbos.shakecast.domain.model.Chapter
 import com.rogerbos.shakecast.domain.model.Episode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -34,6 +35,8 @@ class EpisodeRepository @Inject constructor(
         episodeDao.updatePosition(id, positionMs, System.currentTimeMillis())
 
     suspend fun markUnplayed(id: Long) = episodeDao.markUnplayed(id, System.currentTimeMillis())
+
+    suspend fun setChapters(id: Long, chapters: List<Chapter>) = episodeDao.setChapters(id, json.encodeToString(chapters))
 
     suspend fun setAdBlocks(id: Long, source: AdSource, blocks: List<AdBlock>) =
         episodeDao.setAdBlocks(id, source, if (blocks.isEmpty()) null else json.encodeToString(blocks), System.currentTimeMillis())

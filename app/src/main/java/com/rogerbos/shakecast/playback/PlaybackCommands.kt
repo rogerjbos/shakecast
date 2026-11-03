@@ -8,6 +8,8 @@ object PlaybackCommands {
     const val ACTION_SKIP_BACK = "com.rogerbos.shakecast.SKIP_BACK"
     const val ACTION_TOGGLE_AUTO_SKIP = "com.rogerbos.shakecast.TOGGLE_AUTO_SKIP"
     const val ACTION_SET_SLEEP_TIMER = "com.rogerbos.shakecast.SET_SLEEP_TIMER"
+    const val ACTION_NEXT_CHAPTER = "com.rogerbos.shakecast.NEXT_CHAPTER"
+    const val ACTION_PREVIOUS_CHAPTER = "com.rogerbos.shakecast.PREVIOUS_CHAPTER"
 
     /** Minutes until pause; 0 cancels; [SLEEP_END_OF_EPISODE] pauses when the episode ends. */
     const val ARG_SLEEP_MINUTES = "minutes"
@@ -21,6 +23,8 @@ object PlaybackCommands {
     val skipBack = SessionCommand(ACTION_SKIP_BACK, Bundle.EMPTY)
     val toggleAutoSkip = SessionCommand(ACTION_TOGGLE_AUTO_SKIP, Bundle.EMPTY)
     val setSleepTimer = SessionCommand(ACTION_SET_SLEEP_TIMER, Bundle.EMPTY)
+    val nextChapter = SessionCommand(ACTION_NEXT_CHAPTER, Bundle.EMPTY)
+    val previousChapter = SessionCommand(ACTION_PREVIOUS_CHAPTER, Bundle.EMPTY)
 
-    val all = listOf(skipForward, skipBack, toggleAutoSkip, setSleepTimer)
+    val all = listOf(skipForward, skipBack, toggleAutoSkip, setSleepTimer, nextChapter, previousChapter)
 }

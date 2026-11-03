@@ -22,6 +22,7 @@
       <podcast:transcript url="https://example.com/ep2.srt" type="application/x-subrip"/>
       <podcast:transcript url="https://example.com/ep2.json" type="application/json"/>
       <podcast:transcript url="https://example.com/ep2.vtt" type="text/vtt"/>
+      <podcast:chapters url="https://example.com/ep2_chapters.json" type="application/json+chapters"/>
     </item>
     <item>
       <title>Episode 1: Gold</title>

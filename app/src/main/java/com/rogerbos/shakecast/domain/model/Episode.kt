@@ -21,7 +21,9 @@ data class Episode(
     val isPlayed: Boolean,
     val lastPlayedAt: Long?,
     val adSource: AdSource,
-    val adBlocks: List<AdBlock>
+    val adBlocks: List<AdBlock>,
+    val chapters: List<Chapter>,
+    val chaptersResolved: Boolean
 ) {
     val isDownloaded: Boolean get() = downloadState == DownloadState.DOWNLOADED && localFilePath != null
 }

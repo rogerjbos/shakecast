@@ -7,6 +7,7 @@ import androidx.work.WorkerParameters
 import com.rogerbos.shakecast.data.db.EpisodeDao
 import com.rogerbos.shakecast.domain.model.DownloadState
 import com.rogerbos.shakecast.domain.usecase.ResolveAdBlocks
+import com.rogerbos.shakecast.domain.usecase.ResolveChapters
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
@@ -23,7 +24,8 @@ class EpisodeDownloadWorker @AssistedInject constructor(
     private val episodeDao: EpisodeDao,
     private val fileStore: EpisodeFileStore,
     private val client: OkHttpClient,
-    private val resolveAdBlocks: ResolveAdBlocks
+    private val resolveAdBlocks: ResolveAdBlocks,
+    private val resolveChapters: ResolveChapters
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
@@ -54,6 +56,7 @@ class EpisodeDownloadWorker @AssistedInject constructor(
                 episodeDao.setDownloaded(episodeId, DownloadState.DOWNLOADED, file.absolutePath, System.currentTimeMillis(), duration)
                 Timber.i("Downloaded episode %d (%d bytes)", episodeId, file.length())
                 resolveAdBlocks.resolve(episodeId)
+                resolveChapters.resolve(episodeId, force = true)
                 Result.success()
             },
             onFailure = { error ->

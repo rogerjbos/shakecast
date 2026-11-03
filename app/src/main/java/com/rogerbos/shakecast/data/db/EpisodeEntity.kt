@@ -37,6 +37,9 @@ data class EpisodeEntity(
     val enclosureLength: Long?,
     val transcriptUrl: String?,
     val transcriptType: String?,
+    val chaptersUrl: String? = null,
+    /** Serialised chapters; null until resolved, "[]" when the episode has none. */
+    val chaptersJson: String? = null,
     val downloadState: DownloadState,
     val localFilePath: String?,
     val downloadedAt: Long?,

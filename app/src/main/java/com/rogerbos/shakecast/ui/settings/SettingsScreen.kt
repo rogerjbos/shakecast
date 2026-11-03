@@ -112,11 +112,27 @@ fun SettingsScreen(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
             SwitchRow(stringResource(R.string.settings_haptics), s.hapticsEnabled) { v -> viewModel.update { it.copy(hapticsEnabled = v) } }
+            SwitchRow(stringResource(R.string.settings_shake_chapter), s.shakeToNextChapter) { v -> viewModel.update { it.copy(shakeToNextChapter = v) } }
+            HelpText(stringResource(R.string.settings_shake_chapter_help))
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             SectionHeader(stringResource(R.string.settings_section_playback))
             SwitchRow(stringResource(R.string.settings_auto_play_next), s.autoPlayNext) { v -> viewModel.update { it.copy(autoPlayNext = v) } }
             HelpText(stringResource(R.string.settings_auto_play_next_help))
+            SwitchRow(stringResource(R.string.settings_trim_silence), s.trimSilence) { v -> viewModel.update { it.copy(trimSilence = v) } }
+            HelpText(stringResource(R.string.settings_trim_silence_help))
+            Text(stringResource(R.string.settings_volume_boost), modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+            Row(modifier = Modifier.padding(horizontal = 16.dp)) {
+                listOf(0, 3, 6, 9).forEach { db ->
+                    FilterChip(
+                        selected = s.volumeBoostDb == db,
+                        onClick = { viewModel.update { it.copy(volumeBoostDb = db) } },
+                        label = { Text(if (db == 0) stringResource(R.string.settings_volume_boost_off) else stringResource(R.string.settings_volume_boost_db, db)) },
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                }
+            }
+            HelpText(stringResource(R.string.settings_volume_boost_help))
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             SectionHeader(stringResource(R.string.settings_section_ads))

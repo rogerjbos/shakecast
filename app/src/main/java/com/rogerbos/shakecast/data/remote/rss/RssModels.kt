@@ -22,7 +22,8 @@ data class ParsedItem(
     val enclosureType: String,
     val enclosureLength: Long?,
     val transcriptUrl: String?,
-    val transcriptType: String?
+    val transcriptType: String?,
+    val chaptersUrl: String? = null
 )
 
 object RssValues {

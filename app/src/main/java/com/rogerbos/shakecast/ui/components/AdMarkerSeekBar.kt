@@ -27,11 +27,13 @@ fun AdMarkerSeekBar(
     positionMs: Long,
     durationMs: Long,
     adBlocks: List<AdBlock>,
+    chapterStartsSec: List<Double> = emptyList(),
     onSeek: (Long) -> Unit
 ) {
     var dragging by remember { mutableStateOf<Float?>(null) }
     val fraction = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
     val adColor = MaterialTheme.colorScheme.error.copy(alpha = 0.85f)
+    val tickColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
 
     Box(modifier = modifier.fillMaxWidth().height(48.dp), contentAlignment = Alignment.Center) {
         Slider(
@@ -43,9 +45,14 @@ fun AdMarkerSeekBar(
             },
             modifier = Modifier.fillMaxWidth()
         )
-        if (durationMs > 0 && adBlocks.isNotEmpty()) {
+        if (durationMs > 0 && (adBlocks.isNotEmpty() || chapterStartsSec.isNotEmpty())) {
             // Drawn after the slider so it sits on top; it has no pointer handling, so drags still reach the slider.
             Canvas(modifier = Modifier.fillMaxWidth().height(6.dp).padding(horizontal = 12.dp)) {
+                for (startSec in chapterStartsSec) {
+                    if (startSec <= 0.0) continue
+                    val x = (startSec * 1000f / durationMs).toFloat().coerceIn(0f, 1f) * size.width
+                    drawRect(color = tickColor, topLeft = Offset(x - 1f, 0f), size = Size(2f, size.height))
+                }
                 for (block in adBlocks) {
                     val startX = (block.start * 1000f / durationMs).toFloat().coerceIn(0f, 1f) * size.width
                     val endX = (block.end * 1000f / durationMs).toFloat().coerceIn(0f, 1f) * size.width

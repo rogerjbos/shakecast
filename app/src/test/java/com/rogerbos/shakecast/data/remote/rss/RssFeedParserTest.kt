@@ -33,6 +33,7 @@ class RssFeedParserTest {
         assertEquals(12345L, ep2.enclosureLength)
         assertEquals("https://example.com/ep2.json", ep2.transcriptUrl)
         assertEquals("application/json", ep2.transcriptType)
+        assertEquals("https://example.com/ep2_chapters.json", ep2.chaptersUrl)
         assertEquals(1730800800000L, ep2.pubDateMs)
 
         val ep1 = feed.items[1]
@@ -41,6 +42,7 @@ class RssFeedParserTest {
         assertEquals("First episode", ep1.description)
         assertEquals(3723, ep1.durationSec)
         assertNull(ep1.transcriptUrl)
+        assertNull(ep1.chaptersUrl)
         assertEquals(1730107800000L, ep1.pubDateMs)
     }
 

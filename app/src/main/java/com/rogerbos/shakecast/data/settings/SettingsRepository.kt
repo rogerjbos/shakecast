@@ -42,6 +42,9 @@ class SettingsRepository @Inject constructor(
         val syncKey = stringPreferencesKey("syncKey")
         val autoPlayNext = booleanPreferencesKey("autoPlayNext")
         val rememberManualSkips = booleanPreferencesKey("rememberManualSkips")
+        val trimSilence = booleanPreferencesKey("trimSilence")
+        val volumeBoostDb = intPreferencesKey("volumeBoostDb")
+        val shakeToNextChapter = booleanPreferencesKey("shakeToNextChapter")
         val lastSyncAtMs = longPreferencesKey("lastSyncAtMs")
         val lastSyncError = stringPreferencesKey("lastSyncError")
     }
@@ -66,7 +69,10 @@ class SettingsRepository @Inject constructor(
             supabaseKey = p[Keys.supabaseKey] ?: d.supabaseKey,
             syncKey = p[Keys.syncKey] ?: d.syncKey,
             autoPlayNext = p[Keys.autoPlayNext] ?: d.autoPlayNext,
-            rememberManualSkips = p[Keys.rememberManualSkips] ?: d.rememberManualSkips
+            rememberManualSkips = p[Keys.rememberManualSkips] ?: d.rememberManualSkips,
+            trimSilence = p[Keys.trimSilence] ?: d.trimSilence,
+            volumeBoostDb = p[Keys.volumeBoostDb] ?: d.volumeBoostDb,
+            shakeToNextChapter = p[Keys.shakeToNextChapter] ?: d.shakeToNextChapter
         )
     }
 
@@ -111,6 +117,9 @@ class SettingsRepository @Inject constructor(
             p[Keys.syncKey] = next.syncKey
             p[Keys.autoPlayNext] = next.autoPlayNext
             p[Keys.rememberManualSkips] = next.rememberManualSkips
+            p[Keys.trimSilence] = next.trimSilence
+            p[Keys.volumeBoostDb] = next.volumeBoostDb
+            p[Keys.shakeToNextChapter] = next.shakeToNextChapter
         }
     }
 }

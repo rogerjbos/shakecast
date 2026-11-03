@@ -3,6 +3,7 @@ package com.rogerbos.shakecast.playback
 import android.app.PendingIntent
 import android.content.Intent
 import android.media.AudioManager
+import android.media.audiofx.LoudnessEnhancer
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -27,10 +28,13 @@ import com.rogerbos.shakecast.data.settings.Settings
 import com.rogerbos.shakecast.data.settings.SettingsRepository
 import com.rogerbos.shakecast.data.sync.SyncEngine
 import com.rogerbos.shakecast.data.sync.SyncScheduler
+import com.rogerbos.shakecast.domain.ads.ChapterAds
 import com.rogerbos.shakecast.domain.model.AdSource
+import com.rogerbos.shakecast.domain.model.Chapter
 import com.rogerbos.shakecast.domain.usecase.MarkEpisodePlayed
 import com.rogerbos.shakecast.domain.usecase.PickNextEpisode
 import com.rogerbos.shakecast.domain.usecase.ResolveAdBlocks
+import com.rogerbos.shakecast.domain.usecase.ResolveChapters
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -55,6 +59,7 @@ class PlaybackService : MediaSessionService() {
     @Inject lateinit var podcastRepository: PodcastRepository
     @Inject lateinit var markEpisodePlayed: MarkEpisodePlayed
     @Inject lateinit var resolveAdBlocks: ResolveAdBlocks
+    @Inject lateinit var resolveChapters: ResolveChapters
     @Inject lateinit var mediaItemFactory: MediaItemFactory
     @Inject lateinit var haptics: Haptics
     @Inject lateinit var syncScheduler: SyncScheduler
@@ -77,6 +82,8 @@ class PlaybackService : MediaSessionService() {
     private lateinit var sleepTimer: SleepTimer
     private val skipRecorder = ManualSkipRecorder()
     private val flushSkips = Runnable { flushRecordedSkips(force = false) }
+    private var loudness: LoudnessEnhancer? = null
+    private var currentChapters: List<Chapter> = emptyList()
     private var settings: Settings = Settings.DEFAULT
     private var blocksJob: Job? = null
     private var podcastAutoSkip = true
@@ -95,6 +102,11 @@ class PlaybackService : MediaSessionService() {
             .setSeekForwardIncrementMs(30_000)
             .setSeekBackIncrementMs(15_000)
             .build()
+        val audioSessionId = audioManager.generateAudioSessionId()
+        exoPlayer.audioSessionId = audioSessionId
+        loudness = runCatching { LoudnessEnhancer(audioSessionId) }
+            .onFailure { Timber.w(it, "LoudnessEnhancer unavailable") }
+            .getOrNull()
 
         val chord = VolumeChordDetector(
             onSkipForward = { skipForward("volume-chord") },
@@ -102,7 +114,7 @@ class PlaybackService : MediaSessionService() {
         )
         player = ShakecastPlayer(exoPlayer, audioManager, chord)
 
-        shakeDetector = ShakeDetector(configFor(settings)) { handler.post { skipForward("shake") } }
+        shakeDetector = ShakeDetector(configFor(settings)) { handler.post { onShake() } }
         accelerometer = AccelerometerSource(this, shakeDetector)
 
         val clickCounter = MediaButtonClickCounter(
@@ -137,7 +149,8 @@ class PlaybackService : MediaSessionService() {
                     minutes > 0 -> sleepTimer.setMinutes(minutes)
                     else -> sleepTimer.cancel()
                 }
-            }
+            },
+            jumpChapter = ::jumpChapter
         )
 
         val sessionActivity = PendingIntent.getActivity(
@@ -221,6 +234,13 @@ class PlaybackService : MediaSessionService() {
             mediaSession?.setMediaButtonPreferences(buttonPreferences(next))
         }
         if (player.playbackParameters.speed != next.playbackSpeed) player.setPlaybackSpeed(next.playbackSpeed)
+        exoPlayer.skipSilenceEnabled = next.trimSilence
+        loudness?.let { enhancer ->
+            runCatching {
+                enhancer.setTargetGain(next.volumeBoostDb * 100)
+                enhancer.enabled = next.volumeBoostDb > 0
+            }.onFailure { Timber.w(it, "LoudnessEnhancer update failed") }
+        }
     }
 
     private fun configFor(s: Settings) = ShakeConfig(
@@ -264,7 +284,11 @@ class PlaybackService : MediaSessionService() {
                 podcastAutoSkip = podcast?.autoSkipAds ?: true
                 adSkip.enabled = settings.autoSkipAdsEnabled && podcastAutoSkip
                 val usable = episode.adSource == AdSource.SKIPLIST || episode.adSource == AdSource.TRANSCRIPT
-                adSkip.setBlocks(mediaId, (if (usable) episode.adBlocks else emptyList()) + manual)
+                currentChapters = episode.chapters
+                val knownDurationSec = episode.durationSec?.toDouble() ?: player.duration.takeIf { it != C.TIME_UNSET }?.let { it / 1000.0 }
+                val chapterAds = ChapterAds.blocks(episode.chapters, knownDurationSec)
+                adSkip.setBlocks(mediaId, (if (usable) episode.adBlocks else emptyList()) + manual + chapterAds)
+                if (!episode.chaptersResolved) launch(Dispatchers.IO) { resolveChapters.resolve(id) }
                 if (episode.adBlocks.isEmpty() && (episode.adSource == AdSource.NONE || episode.adSource == AdSource.MISALIGNED)) {
                     val durationSec = player.duration.takeIf { it != C.TIME_UNSET }?.let { it / 1000.0 }
                     val force = episode.adSource == AdSource.MISALIGNED
@@ -272,6 +296,38 @@ class PlaybackService : MediaSessionService() {
                 }
             }
         }
+    }
+
+    private fun onShake() {
+        if (settings.shakeToNextChapter && currentChapters.isNotEmpty()) {
+            val target = ChapterNavigator.nextStartMs(currentChapters, player.currentPosition)
+            if (target != null) {
+                haptics.heavyClick()
+                val from = player.currentPosition
+                player.seekTo(target)
+                Timber.i("skip source=shake chapter=%dms", target)
+                recordSkip { id, now -> skipRecorder.onSkipForward(id, from, target, now) }
+                return
+            }
+        }
+        skipForward("shake")
+    }
+
+    private fun jumpChapter(direction: Int) {
+        if (currentChapters.isEmpty()) {
+            if (direction > 0) skipForward("chapter-button") else skipBack("chapter-button")
+            return
+        }
+        val pos = player.currentPosition
+        val target = if (direction > 0) ChapterNavigator.nextStartMs(currentChapters, pos) else ChapterNavigator.previousStartMs(currentChapters, pos)
+        if (target == null) {
+            skipForward("chapter-button")
+            return
+        }
+        haptics.heavyClick()
+        player.seekTo(target)
+        Timber.i("chapter jump direction=%d to=%dms", direction, target)
+        if (direction > 0) recordSkip { id, now -> skipRecorder.onSkipForward(id, pos, target, now) }
     }
 
     private fun skipForward(source: String) {
@@ -338,6 +394,8 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        loudness?.release()
+        loudness = null
         flushRecordedSkips(force = true)
         sleepTimer.cancel(notify = false)
         accelerometer.stop()

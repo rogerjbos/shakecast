@@ -8,6 +8,7 @@ import com.rogerbos.shakecast.data.settings.Settings
 import com.rogerbos.shakecast.data.settings.SettingsRepository
 import com.rogerbos.shakecast.domain.model.AdBlock
 import com.rogerbos.shakecast.domain.model.AdSource
+import com.rogerbos.shakecast.domain.model.Chapter
 import com.rogerbos.shakecast.domain.usecase.MarkEpisodePlayed
 import com.rogerbos.shakecast.playback.PlayerConnection
 import com.rogerbos.shakecast.playback.PlayerSnapshot
@@ -28,12 +29,13 @@ data class NowPlayingUiState(
     val player: PlayerSnapshot,
     val adBlocks: List<AdBlock>,
     val manualSkips: List<AdBlock>,
+    val chapters: List<Chapter>,
     val adSource: AdSource,
     val settings: Settings,
     val isPlayed: Boolean
 ) {
     companion object {
-        val EMPTY = NowPlayingUiState(PlayerSnapshot.EMPTY, emptyList(), emptyList(), AdSource.NONE, Settings.DEFAULT, false)
+        val EMPTY = NowPlayingUiState(PlayerSnapshot.EMPTY, emptyList(), emptyList(), emptyList(), AdSource.NONE, Settings.DEFAULT, false)
     }
 }
 
@@ -63,6 +65,7 @@ class NowPlayingViewModel @Inject constructor(
             player = player,
             adBlocks = ep?.adBlocks.orEmpty(),
             manualSkips = manual,
+            chapters = ep?.chapters.orEmpty(),
             adSource = ep?.adSource ?: AdSource.NONE,
             settings = settings,
             isPlayed = ep?.isPlayed ?: false
@@ -70,6 +73,8 @@ class NowPlayingViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NowPlayingUiState.EMPTY)
 
     fun setSleepTimer(minutes: Int) = playerConnection.setSleepTimer(minutes)
+    fun nextChapter() = playerConnection.nextChapter()
+    fun previousChapter() = playerConnection.previousChapter()
 
     fun forgetManualSkips() {
         val id = playerConnection.state.value.episodeId ?: return

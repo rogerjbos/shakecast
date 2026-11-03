@@ -11,7 +11,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -42,6 +48,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rogerbos.shakecast.R
+import com.rogerbos.shakecast.domain.model.Chapter
+import com.rogerbos.shakecast.playback.ChapterNavigator
 import com.rogerbos.shakecast.playback.PlaybackCommands
 import com.rogerbos.shakecast.domain.model.AdSource
 import com.rogerbos.shakecast.ui.components.AdMarkerSeekBar
@@ -64,6 +72,8 @@ fun NowPlayingScreen(
     val player = state.player
     var showSleepDialog by remember { mutableStateOf(false) }
     var showForgetDialog by remember { mutableStateOf(false) }
+    var showChapters by remember { mutableStateOf(false) }
+    val currentChapter = ChapterNavigator.current(state.chapters, player.positionMs)
 
     Column(modifier = modifier.fillMaxSize()) {
         TopAppBar(
@@ -72,6 +82,11 @@ fun NowPlayingScreen(
                 IconButton(onClick = onBack) { Icon(Icons.Filled.KeyboardArrowDown, contentDescription = stringResource(R.string.cd_back)) }
             },
             actions = {
+                if (state.chapters.isNotEmpty()) {
+                    IconButton(onClick = { showChapters = true }) {
+                        Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(R.string.chapters))
+                    }
+                }
                 SleepTimerAction(
                     endAtMs = player.sleepEndAtMs,
                     endOfEpisode = player.sleepEndOfEpisode,
@@ -97,10 +112,22 @@ fun NowPlayingScreen(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
+            if (currentChapter != null) {
+                Text(
+                    currentChapter.title,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.clickable { showChapters = true }
+                )
+            }
             AdMarkerSeekBar(
                 positionMs = player.positionMs,
                 durationMs = player.durationMs,
                 adBlocks = state.adBlocks + state.manualSkips,
+                chapterStartsSec = state.chapters.map { it.start },
                 onSeek = viewModel::seekTo
             )
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -108,12 +135,22 @@ fun NowPlayingScreen(
                 Text(formatClock(player.durationMs), style = MaterialTheme.typography.labelMedium)
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (state.chapters.isNotEmpty()) {
+                    IconButton(onClick = viewModel::previousChapter) {
+                        Icon(Icons.Filled.SkipPrevious, contentDescription = stringResource(R.string.cd_previous_chapter))
+                    }
+                }
                 FilledIconButton(onClick = viewModel::togglePlayPause, modifier = Modifier.size(64.dp)) {
                     Icon(
                         imageVector = if (player.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                         contentDescription = stringResource(if (player.isPlaying) R.string.cd_pause else R.string.cd_play),
                         modifier = Modifier.size(36.dp)
                     )
+                }
+                if (state.chapters.isNotEmpty()) {
+                    IconButton(onClick = viewModel::nextChapter) {
+                        Icon(Icons.Filled.SkipNext, contentDescription = stringResource(R.string.cd_next_chapter))
+                    }
                 }
                 val nextSpeed = SPEEDS[(SPEEDS.indexOf(player.speed).takeIf { it >= 0 }?.plus(1) ?: 0) % SPEEDS.size]
                 AssistChip(
@@ -149,6 +186,14 @@ fun NowPlayingScreen(
             onDismiss = { showSleepDialog = false }
         )
     }
+    if (showChapters) {
+        ChaptersDialog(
+            chapters = state.chapters,
+            current = currentChapter,
+            onPick = { chapter -> viewModel.seekTo((chapter.start * 1000).toLong()); showChapters = false },
+            onDismiss = { showChapters = false }
+        )
+    }
     if (showForgetDialog) {
         AlertDialog(
             onDismissRequest = { showForgetDialog = false },
@@ -160,6 +205,41 @@ fun NowPlayingScreen(
             dismissButton = { TextButton(onClick = { showForgetDialog = false }) { Text(stringResource(R.string.action_cancel)) } }
         )
     }
+}
+
+@Composable
+private fun ChaptersDialog(chapters: List<Chapter>, current: Chapter?, onPick: (Chapter) -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.chapters)) },
+        text = {
+            LazyColumn {
+                items(chapters, key = { it.start }) { chapter ->
+                    val isCurrent = chapter == current
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable { onPick(chapter) }.padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            formatClock((chapter.start * 1000).toLong()),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(end = 12.dp)
+                        )
+                        Text(
+                            chapter.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } }
+    )
 }
 
 @Composable

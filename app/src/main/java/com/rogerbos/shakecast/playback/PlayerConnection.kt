@@ -127,6 +127,10 @@ class PlayerConnection @Inject constructor(
 
     fun setSpeed(speed: Float) = withController { it.setPlaybackSpeed(speed) }
 
+    fun nextChapter() = withController { it.sendCustomCommand(PlaybackCommands.nextChapter, Bundle.EMPTY) }
+
+    fun previousChapter() = withController { it.sendCustomCommand(PlaybackCommands.previousChapter, Bundle.EMPTY) }
+
     /** Minutes until pause, 0 to cancel, or [PlaybackCommands.SLEEP_END_OF_EPISODE]. */
     fun setSleepTimer(minutes: Int) = withController { c ->
         val args = Bundle().apply { putInt(PlaybackCommands.ARG_SLEEP_MINUTES, minutes) }

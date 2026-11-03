@@ -83,6 +83,8 @@ class RefreshFeeds @Inject constructor(
                 enclosureLength = item.enclosureLength,
                 transcriptUrl = item.transcriptUrl,
                 transcriptType = item.transcriptType,
+                chaptersUrl = item.chaptersUrl,
+                chaptersJson = null,
                 downloadState = DownloadState.NONE,
                 localFilePath = null,
                 downloadedAt = null,

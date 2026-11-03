@@ -3,6 +3,7 @@ package com.rogerbos.shakecast.data.repository
 import com.rogerbos.shakecast.data.db.EpisodeWithPodcast
 import com.rogerbos.shakecast.data.db.PodcastEntity
 import com.rogerbos.shakecast.domain.model.AdBlock
+import com.rogerbos.shakecast.domain.model.Chapter
 import com.rogerbos.shakecast.domain.model.Episode
 import com.rogerbos.shakecast.domain.model.Podcast
 import kotlinx.serialization.json.Json
@@ -26,6 +27,9 @@ fun EpisodeWithPodcast.toDomain(json: Json): Episode {
     val blocks = e.adBlocksJson?.let { raw ->
         runCatching { json.decodeFromString<List<AdBlock>>(raw) }.getOrDefault(emptyList())
     }.orEmpty()
+    val chapters = e.chaptersJson?.let { raw ->
+        runCatching { json.decodeFromString<List<Chapter>>(raw) }.getOrDefault(emptyList())
+    }.orEmpty()
     return Episode(
         id = e.id,
         podcastId = e.podcastId,
@@ -47,6 +51,8 @@ fun EpisodeWithPodcast.toDomain(json: Json): Episode {
         isPlayed = e.isPlayed,
         lastPlayedAt = e.lastPlayedAt,
         adSource = e.adSource,
-        adBlocks = blocks
+        adBlocks = blocks,
+        chapters = chapters,
+        chaptersResolved = e.chaptersJson != null
     )
 }

@@ -86,6 +86,17 @@
     <string name="settings_auto_play_next_help">When an episode ends, play the queue, or the newest unplayed download when the queue is empty.</string>
     <string name="settings_remember_skips">Remember manual skips</string>
     <string name="settings_remember_skips_help">Spans you skip by hand are saved and skipped automatically next time, including on your other synced phones.</string>
+    <string name="settings_trim_silence">Trim silence</string>
+    <string name="settings_trim_silence_help">Skips long pauses in speech. Saves a few minutes per hour on slow talkers.</string>
+    <string name="settings_volume_boost">Volume boost</string>
+    <string name="settings_volume_boost_off">Off</string>
+    <string name="settings_volume_boost_db">+%1$d dB</string>
+    <string name="settings_volume_boost_help">Raises quiet shows above the normal maximum. Loud content may distort at higher settings.</string>
+    <string name="settings_shake_chapter">Shake jumps to the next chapter</string>
+    <string name="settings_shake_chapter_help">When an episode has chapters, a shake skips to the next one instead of 30 seconds. Chapters titled like ads are also skipped automatically.</string>
+    <string name="chapters">Chapters</string>
+    <string name="cd_next_chapter">Next chapter</string>
+    <string name="cd_previous_chapter">Previous chapter</string>
     <string name="settings_section_downloads">Downloads</string>
     <string name="settings_wifi_only">Download on Wi-Fi only</string>
     <string name="settings_keep_per_show">Episodes to keep per show</string>

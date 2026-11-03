@@ -48,7 +48,8 @@ interface EpisodeDao {
         "UPDATE episodes SET title = :title, description = :description, pubDateMs = :pubDateMs, " +
             "durationSec = COALESCE(CASE WHEN downloadState = 'DOWNLOADED' THEN durationSec ELSE NULL END, :durationSec), " +
             "enclosureUrl = :enclosureUrl, enclosureType = :enclosureType, enclosureLength = :enclosureLength, " +
-            "transcriptUrl = :transcriptUrl, transcriptType = :transcriptType " +
+            "transcriptUrl = :transcriptUrl, transcriptType = :transcriptType, " +
+            "chaptersUrl = :chaptersUrl, chaptersJson = CASE WHEN chaptersUrl IS :chaptersUrl THEN chaptersJson ELSE NULL END " +
             "WHERE podcastId = :podcastId AND guid = :guid"
     )
     suspend fun updateMetadata(
@@ -62,7 +63,8 @@ interface EpisodeDao {
         enclosureType: String,
         enclosureLength: Long?,
         transcriptUrl: String?,
-        transcriptType: String?
+        transcriptType: String?,
+        chaptersUrl: String?
     )
 
     @Transaction
@@ -71,10 +73,13 @@ interface EpisodeDao {
         for (e in episodes) {
             updateMetadata(
                 e.podcastId, e.guid, e.title, e.description, e.pubDateMs, e.durationSec,
-                e.enclosureUrl, e.enclosureType, e.enclosureLength, e.transcriptUrl, e.transcriptType
+                e.enclosureUrl, e.enclosureType, e.enclosureLength, e.transcriptUrl, e.transcriptType, e.chaptersUrl
             )
         }
     }
+
+    @Query("UPDATE episodes SET chaptersJson = :json WHERE id = :id")
+    suspend fun setChapters(id: Long, json: String)
 
     @Query("SELECT * FROM episodes WHERE podcastId = :podcastId AND isPlayed = 0 ORDER BY pubDateMs DESC LIMIT :limit")
     suspend fun latestUnplayedForPodcast(podcastId: Long, limit: Int): List<EpisodeEntity>

@@ -90,6 +90,7 @@ class RssFeedParser(private val newParser: () -> XmlPullParser) {
         var transcriptUrl: String? = null
         var transcriptType: String? = null
         var transcriptRank = Int.MAX_VALUE
+        var chaptersUrl: String? = null
 
         while (parser.next() != XmlPullParser.END_TAG || parser.name != "item") {
             if (parser.eventType == XmlPullParser.END_DOCUMENT) break
@@ -117,6 +118,12 @@ class RssFeedParser(private val newParser: () -> XmlPullParser) {
                         mediaUrl = parser.getAttributeValue(null, "url").orEmpty()
                         mediaType = parser.getAttributeValue(null, "type").orEmpty()
                     }
+                    skip(parser)
+                }
+                name == "chapters" && isPodcast(parser) -> {
+                    val url = parser.getAttributeValue(null, "url")
+                    val type = parser.getAttributeValue(null, "type").orEmpty().lowercase()
+                    if (!url.isNullOrBlank() && (type.isEmpty() || type.contains("json"))) chaptersUrl = url
                     skip(parser)
                 }
                 name == "transcript" && isPodcast(parser) -> {
@@ -148,7 +155,8 @@ class RssFeedParser(private val newParser: () -> XmlPullParser) {
             enclosureType = audioType,
             enclosureLength = enclosureLength,
             transcriptUrl = transcriptUrl,
-            transcriptType = transcriptType
+            transcriptType = transcriptType,
+            chaptersUrl = chaptersUrl
         )
     }
 
