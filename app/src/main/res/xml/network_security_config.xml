@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Podcast enclosures and the Mac skip-list server are frequently plain HTTP. -->
-<network-security-config>
-    <base-config cleartextTrafficPermitted="true">
+<!-- Many podcast feeds and enclosures are still served over plain HTTP, so cleartext stays allowed. -->
+<network-security-config xmlns:tools="http://schemas.android.com/tools">
+    <base-config cleartextTrafficPermitted="true" tools:ignore="InsecureBaseConfiguration">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>

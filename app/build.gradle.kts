@@ -81,6 +81,12 @@ android {
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
+
+    lint {
+        // Media3's unstable API is opted into project-wide through the compiler flag below.
+        disable += "UnsafeOptInUsageError"
+        abortOnError = true
+    }
 }
 
 kotlin {

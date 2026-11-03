@@ -32,26 +32,26 @@ class SupabaseAuthApi @Inject constructor(
 ) {
     fun signUp(url: String, apiKey: String, email: String, password: String): Result<SignUpResult> = runCatching {
         val body = json.encodeToString(Credentials(email, password))
-        val text = call(request(url, apiKey, "signup").post(body.toRequestBody(JSON)).build())
+        val text = call(request(url, apiKey, "auth/v1/signup").post(body.toRequestBody(JSON)).build())
         val payload = json.decodeFromString<SessionDto>(text)
         if (payload.accessToken.isNullOrBlank()) SignUpResult.ConfirmEmail else SignUpResult.SignedIn(payload.toSession(email))
     }
 
     fun signIn(url: String, apiKey: String, email: String, password: String): Result<AuthSession> = runCatching {
         val body = json.encodeToString(Credentials(email, password))
-        val text = call(request(url, apiKey, "token", "grant_type" to "password").post(body.toRequestBody(JSON)).build())
+        val text = call(request(url, apiKey, "auth/v1/token", "grant_type" to "password").post(body.toRequestBody(JSON)).build())
         json.decodeFromString<SessionDto>(text).toSession(email)
     }
 
     fun refresh(url: String, apiKey: String, session: AuthSession): Result<AuthSession> = runCatching {
         val body = json.encodeToString(RefreshRequest(session.refreshToken))
-        val text = call(request(url, apiKey, "token", "grant_type" to "refresh_token").post(body.toRequestBody(JSON)).build())
+        val text = call(request(url, apiKey, "auth/v1/token", "grant_type" to "refresh_token").post(body.toRequestBody(JSON)).build())
         json.decodeFromString<SessionDto>(text).toSession(session.email)
     }
 
     /** Revokes the refresh token server-side; a failure here is not worth surfacing. */
     fun signOut(url: String, apiKey: String, session: AuthSession): Result<Unit> = runCatching {
-        val request = request(url, apiKey, "logout")
+        val request = request(url, apiKey, "auth/v1/logout")
             .header("Authorization", "Bearer ${session.accessToken}")
             .post(ByteArray(0).toRequestBody(JSON))
             .build()
@@ -61,11 +61,8 @@ class SupabaseAuthApi @Inject constructor(
 
     /** Calls the `delete_account` database function, which removes the user and, by cascade, every row they own. */
     fun deleteAccount(url: String, apiKey: String, session: AuthSession): Result<Unit> = runCatching {
-        val base = url.trim().trimEnd('/').toHttpUrlOrNull() ?: throw IllegalArgumentException("Invalid Supabase URL: $url")
-        val request = Request.Builder().url(base.newBuilder().addPathSegments("rest/v1/rpc/delete_account").build())
-            .header("apikey", apiKey.trim())
+        val request = request(url, apiKey, "rest/v1/rpc/delete_account")
             .header("Authorization", "Bearer ${session.accessToken}")
-            .header("Content-Type", "application/json")
             .post("{}".toRequestBody(JSON))
             .build()
         call(request)
@@ -80,7 +77,7 @@ class SupabaseAuthApi @Inject constructor(
 
     private fun request(url: String, apiKey: String, path: String, vararg query: Pair<String, String>): Request.Builder {
         val base = url.trim().trimEnd('/').toHttpUrlOrNull() ?: throw IllegalArgumentException("Invalid Supabase URL: $url")
-        val built: HttpUrl = base.newBuilder().addPathSegments("auth/v1/$path")
+        val built: HttpUrl = base.newBuilder().addPathSegments(path)
             .apply { query.forEach { (k, v) -> addQueryParameter(k, v) } }
             .build()
         return Request.Builder().url(built)

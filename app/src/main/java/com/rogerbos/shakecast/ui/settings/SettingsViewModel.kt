@@ -10,6 +10,7 @@ import com.rogerbos.shakecast.data.refresh.RefreshScheduler
 import com.rogerbos.shakecast.data.remote.sync.SupabaseSyncApi
 import com.rogerbos.shakecast.data.settings.Settings
 import com.rogerbos.shakecast.data.settings.SettingsRepository
+import com.rogerbos.shakecast.data.settings.SettingsSync
 import com.rogerbos.shakecast.data.settings.ShakeSensitivity
 import com.rogerbos.shakecast.data.sync.SyncScheduler
 import com.rogerbos.shakecast.domain.usecase.ExportOpml
@@ -116,7 +117,7 @@ class SettingsViewModel @Inject constructor(
                 syncScheduler.enqueueNow()
             } else if (!next.syncEnabled && before.syncEnabled) {
                 syncScheduler.cancelPeriodic()
-            } else if (next.syncEnabled) {
+            } else if (next.syncEnabled && SettingsSync.toRemoteJson(next) != SettingsSync.toRemoteJson(before)) {
                 syncScheduler.enqueueSoon(delaySeconds = 20)
             }
         }
@@ -183,16 +184,14 @@ class SettingsViewModel @Inject constructor(
 
     fun signOut() = authRequest {
         authManager.signOut()
-        syncScheduler.cancelPeriodic()
-        syncTestResult.value = null
+        afterSignOut()
         null
     }
 
     fun deleteAccount() = authRequest {
         authManager.deleteAccount().fold(
             onSuccess = {
-                syncScheduler.cancelPeriodic()
-                syncTestResult.value = null
+                afterSignOut()
                 AuthMessage.AccountDeleted
             },
             onFailure = { AuthMessage.Error(it.message ?: it.javaClass.simpleName) }
@@ -207,6 +206,11 @@ class SettingsViewModel @Inject constructor(
             authMessage.value = block()
             authBusy.value = false
         }
+    }
+
+    private fun afterSignOut() {
+        syncScheduler.cancelPeriodic()
+        syncTestResult.value = null
     }
 
     private suspend fun afterSignIn() {

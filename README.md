@@ -1,6 +1,10 @@
 # Shakecast
 
-A glove-friendly Android podcast player. Shake the phone hard to skip ahead 30 seconds; a headset double-click, a volume-key chord, oversized notification buttons, and automatic ad detection cover the rest.
+A full-featured, yet simple, glove-friendly Android podcast player with many ways to skip ads:
+* Shake the phone to skip ahead 30 seconds
+* a headset double-click will also skip ahead
+* a volume-key chord (up then down within 1/2 second)
+* extra large `skip ahead 30s` button
 
 ## Features
 
@@ -39,7 +43,7 @@ Release builds are shrunk by R8 (names are kept, since the code is public) and s
 
 ```bash
 /Users/rogerjbos/Library/Android/sdk/platform-tools/adb devices -l
-/gradlew installDebug
+./gradlew installDebug
 ```
 
 ## Syncing between phones

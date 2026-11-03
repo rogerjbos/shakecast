@@ -1,6 +1,8 @@
 package com.rogerbos.shakecast
 
 import android.Manifest
+import android.app.SearchManager
+import android.provider.MediaStore
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -12,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.navigation.compose.rememberNavController
@@ -40,6 +43,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var syncScheduler: SyncScheduler
 
     private var openNowPlayingRequests by mutableIntStateOf(0)
+    private var pendingSearch by mutableStateOf<String?>(null)
 
     private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
@@ -52,13 +56,19 @@ class MainActivity : ComponentActivity() {
             refreshScheduler.schedulePeriodic(settings.refreshIntervalHours)
             if (settings.syncEnabled) syncScheduler.schedulePeriodic()
         }
-        if (intent?.action == ACTION_OPEN_NOW_PLAYING) openNowPlayingRequests++
+        intent?.let(::handleIntent)
 
         setContent {
             ShakecastTheme {
                 val navController = rememberNavController()
                 LaunchedEffect(openNowPlayingRequests) {
                     if (openNowPlayingRequests > 0) navController.navigate(Route.NowPlaying) { launchSingleTop = true }
+                }
+                LaunchedEffect(pendingSearch) {
+                    pendingSearch?.let { query ->
+                        navController.navigate(Route.Search(query)) { launchSingleTop = true }
+                        pendingSearch = null
+                    }
                 }
                 ShakecastNavHost(navController = navController, playerConnection = playerConnection)
             }
@@ -67,7 +77,18 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        if (intent.action == ACTION_OPEN_NOW_PLAYING) openNowPlayingRequests++
+        handleIntent(intent)
+    }
+
+    /** Notification taps open Now Playing; a voice search opens the Search tab with the spoken words. */
+    private fun handleIntent(intent: Intent) {
+        when (intent.action) {
+            ACTION_OPEN_NOW_PLAYING -> openNowPlayingRequests++
+            MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH -> {
+                val query = intent.getStringExtra(SearchManager.QUERY).orEmpty().trim()
+                if (query.isEmpty()) openNowPlayingRequests++ else pendingSearch = query
+            }
+        }
     }
 
     override fun onStart() {

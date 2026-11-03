@@ -18,18 +18,23 @@ read -r -s -p "Keystore password (also used for the key): " PASSWORD; echo
 read -r -s -p "Repeat password: " PASSWORD2; echo
 [[ "$PASSWORD" == "$PASSWORD2" ]] || { echo "Passwords differ." >&2; exit 1; }
 [[ ${#PASSWORD} -ge 8 ]] || { echo "Use at least 8 characters." >&2; exit 1; }
+[[ "$PASSWORD" == "${PASSWORD#"${PASSWORD%%[![:space:]]*}"}" ]] || { echo "The password must not start with whitespace." >&2; exit 1; }
 
+# The password goes to keytool through the environment, not the command line, so it never shows in `ps`.
+export SHAKECAST_KEYSTORE_PASSWORD="$PASSWORD"
 "$KEYTOOL" -genkeypair -v \
-  -keystore "$STORE" -storepass "$PASSWORD" -keypass "$PASSWORD" \
+  -keystore "$STORE" -storepass:env SHAKECAST_KEYSTORE_PASSWORD -keypass:env SHAKECAST_KEYSTORE_PASSWORD \
   -alias "$ALIAS" -keyalg RSA -keysize 4096 -validity 10000 \
   -dname "CN=Shakecast, O=Roger Bos, C=US"
 
-cat > keystore.properties <<PROPS
-storeFile=$STORE
-storePassword=$PASSWORD
-keyAlias=$ALIAS
-keyPassword=$PASSWORD
-PROPS
+# java.util.Properties treats backslashes as escapes, so double them.
+ESCAPED="${PASSWORD//\\/\\\\}"
+{
+  printf 'storeFile=%s\n' "$STORE"
+  printf 'storePassword=%s\n' "$ESCAPED"
+  printf 'keyAlias=%s\n' "$ALIAS"
+  printf 'keyPassword=%s\n' "$ESCAPED"
+} > keystore.properties
 chmod 600 keystore.properties
 
 echo

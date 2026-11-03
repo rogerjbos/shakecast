@@ -30,6 +30,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -48,11 +49,18 @@ import com.rogerbos.shakecast.ui.components.PodcastArtwork
 @Composable
 fun SearchScreen(
     modifier: Modifier = Modifier,
-    viewModel: SearchViewModel = hiltViewModel()
+    viewModel: SearchViewModel = hiltViewModel(),
+    initialQuery: String = ""
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val keyboard = LocalSoftwareKeyboardController.current
     var queryText by remember { mutableStateOf(state.query) }
+    LaunchedEffect(initialQuery) {
+        if (initialQuery.isNotBlank() && queryText.isBlank()) {
+            queryText = initialQuery
+            viewModel.onQueryChange(initialQuery)
+        }
+    }
 
     Column(modifier = modifier.fillMaxSize()) {
         TopAppBar(title = { Text(stringResource(R.string.search_title)) })

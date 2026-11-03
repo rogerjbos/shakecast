@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.TextButton
@@ -40,6 +38,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -65,18 +65,19 @@ fun SettingsScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val s = state.settings
     val context = LocalContext.current
+    val resources = LocalResources.current
     val scope = rememberCoroutineScope()
     val opmlStrings = SettingsViewModel.OpmlStrings(
         empty = stringResource(R.string.opml_empty),
-        error = { stringResource_error(context, it) },
-        progress = { done, total -> context.getString(R.string.opml_progress, done, total) },
-        done = { added, skipped, failed -> context.getString(R.string.opml_done, added, skipped, failed) }
+        error = { resources.getString(R.string.opml_error, it) },
+        progress = { done, total -> resources.getString(R.string.opml_progress, done, total) },
+        done = { added, skipped, failed -> resources.getString(R.string.opml_done, added, skipped, failed) }
     )
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
             val reader = withContext(Dispatchers.IO) { runCatching { context.contentResolver.openInputStream(uri)?.bufferedReader() }.getOrNull() }
-            if (reader == null) viewModel.setOpmlStatus(context.getString(R.string.opml_error, "cannot open file")) else viewModel.importOpml(reader, opmlStrings)
+            if (reader == null) viewModel.setOpmlStatus(resources.getString(R.string.opml_error, "cannot open file")) else viewModel.importOpml(reader, opmlStrings)
         }
     }
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/x-opml")) { uri ->
@@ -86,7 +87,7 @@ fun SettingsScreen(
             val ok = withContext(Dispatchers.IO) {
                 runCatching { context.contentResolver.openOutputStream(uri)?.use { it.write(text.toByteArray()) } != null }.getOrDefault(false)
             }
-            viewModel.setOpmlStatus(context.getString(if (ok) R.string.opml_exported else R.string.opml_export_failed))
+            viewModel.setOpmlStatus(resources.getString(if (ok) R.string.opml_exported else R.string.opml_export_failed))
         }
     }
 
@@ -300,8 +301,10 @@ fun SettingsScreen(
                 SwitchRow(stringResource(R.string.settings_crash_reports), s.crashReportsEnabled) { v -> viewModel.update { it.copy(crashReportsEnabled = v) } }
                 HelpText(stringResource(R.string.settings_crash_reports_help))
             }
+            val privacyUrl = stringResource(R.string.privacy_policy_url)
+            val uriHandler = LocalUriHandler.current
             TextButton(
-                onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(context.getString(R.string.privacy_policy_url)))) },
+                onClick = { runCatching { uriHandler.openUri(privacyUrl) } },
                 modifier = Modifier.padding(horizontal = 8.dp)
             ) { Text(stringResource(R.string.settings_privacy_policy)) }
         }
@@ -388,9 +391,6 @@ private fun sensitivityLabel(level: ShakeSensitivity): String = when (level) {
     ShakeSensitivity.MEDIUM -> stringResource(R.string.sensitivity_medium)
     ShakeSensitivity.HIGH -> stringResource(R.string.sensitivity_high)
 }
-
-private fun stringResource_error(context: android.content.Context, message: String): String =
-    context.getString(R.string.opml_error, message)
 
 @Composable
 private fun HelpText(text: String) {

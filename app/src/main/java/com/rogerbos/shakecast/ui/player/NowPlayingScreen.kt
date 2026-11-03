@@ -41,6 +41,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -292,7 +293,7 @@ private fun SleepTimerDialog(active: Boolean, onPick: (Int) -> Unit, onDismiss: 
 
 @Composable
 private fun adLabel(source: AdSource, count: Int): String = when (source) {
-    AdSource.SKIPLIST, AdSource.TRANSCRIPT -> stringResource(R.string.ads_known, count)
+    AdSource.SKIPLIST, AdSource.TRANSCRIPT -> pluralStringResource(R.plurals.ads_known, count, count)
     AdSource.MISALIGNED -> stringResource(R.string.ads_misaligned)
     AdSource.NONE -> stringResource(R.string.ads_unknown)
 }

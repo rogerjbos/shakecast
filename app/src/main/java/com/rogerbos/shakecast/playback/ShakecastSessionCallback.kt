@@ -16,6 +16,7 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.ConnectionResult
 import androidx.media3.session.MediaSession.MediaItemsWithStartPosition
 import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
@@ -66,7 +67,7 @@ class ShakecastSessionCallback(
             PlaybackCommands.ACTION_SET_SLEEP_TIMER -> setSleepTimer(args.getInt(PlaybackCommands.ARG_SLEEP_MINUTES, 0))
             PlaybackCommands.ACTION_NEXT_CHAPTER -> jumpChapter(1)
             PlaybackCommands.ACTION_PREVIOUS_CHAPTER -> jumpChapter(-1)
-            else -> return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
+            else -> return Futures.immediateFuture(SessionResult(SessionError.ERROR_NOT_SUPPORTED))
         }
         return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
     }
@@ -95,7 +96,7 @@ class ShakecastSessionCallback(
         params: LibraryParams?
     ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> = scope.future {
         val children = libraryTree.children(parentId, libraryLabels)
-            ?: return@future LibraryResult.ofError(LibraryResult.RESULT_ERROR_BAD_VALUE)
+            ?: return@future LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
         val from = (page * pageSize).coerceAtMost(children.size)
         val to = (from + pageSize).coerceAtMost(children.size)
         LibraryResult.ofItemList(ImmutableList.copyOf(children.subList(from, to)), params)
@@ -107,7 +108,7 @@ class ShakecastSessionCallback(
         mediaId: String
     ): ListenableFuture<LibraryResult<MediaItem>> = scope.future {
         libraryTree.item(mediaId, libraryLabels)?.let { LibraryResult.ofItem(it, null) }
-            ?: LibraryResult.ofError(LibraryResult.RESULT_ERROR_BAD_VALUE)
+            ?: LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
     }
 
     /** Playing from a browse list resumes where the episode was left. */

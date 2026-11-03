@@ -38,6 +38,7 @@ class ShakecastApp : Application(), Configuration.Provider {
         } else {
             Timber.plant(CrashReporting.BreadcrumbTree())
         }
+        CrashReporting.startIfConsented(this)
         if (CrashReporting.available) {
             appScope.launch {
                 settingsRepository.settings.map { it.crashReportsEnabled }.distinctUntilChanged().collect { enabled ->

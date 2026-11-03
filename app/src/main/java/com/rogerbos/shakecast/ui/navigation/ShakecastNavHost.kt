@@ -21,6 +21,7 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.toRoute
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.rogerbos.shakecast.R
 import com.rogerbos.shakecast.playback.PlayerConnection
@@ -65,7 +66,7 @@ fun ShakecastNavHost(
                         )
                         NavigationBarItem(
                             selected = destination?.hasRoute<Route.Search>() == true,
-                            onClick = { navController.navigate(Route.Search) { popUpTo(Route.Home); launchSingleTop = true } },
+                            onClick = { navController.navigate(Route.Search()) { popUpTo(Route.Home); launchSingleTop = true } },
                             icon = { Icon(Icons.Filled.Search, contentDescription = null) },
                             label = { Text(stringResource(R.string.nav_search)) }
                         )
@@ -88,11 +89,11 @@ fun ShakecastNavHost(
             composable<Route.Home> {
                 HomeScreen(
                     onOpenPodcast = { id -> navController.navigate(Route.PodcastDetail(id)) },
-                    onOpenSearch = { navController.navigate(Route.Search) { launchSingleTop = true } },
+                    onOpenSearch = { navController.navigate(Route.Search()) { launchSingleTop = true } },
                     onOpenNowPlaying = openNowPlaying
                 )
             }
-            composable<Route.Search> { SearchScreen() }
+            composable<Route.Search> { entry -> SearchScreen(initialQuery = entry.toRoute<Route.Search>().query) }
             composable<Route.PodcastDetail> {
                 PodcastDetailScreen(onBack = { navController.popBackStack() }, onOpenNowPlaying = openNowPlaying)
             }

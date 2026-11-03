@@ -70,7 +70,10 @@
     <string name="episode_delete_download">Delete download</string>
     <string name="episode_download_now">Download now</string>
 
-    <string name="ads_known">%1$d ads</string>
+    <plurals name="ads_known">
+        <item quantity="one">%1$d ad</item>
+        <item quantity="other">%1$d ads</item>
+    </plurals>
     <string name="ads_misaligned">Ads: dynamic, markers off</string>
     <string name="ads_unknown">Ads: unknown</string>
 

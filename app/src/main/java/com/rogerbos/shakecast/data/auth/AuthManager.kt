@@ -61,7 +61,12 @@ class AuthManager @Inject constructor(
         runCatching {
             val s = settingsRepository.current()
             val session = validSession(s.supabaseUrl, s.supabaseKey)
-            api.deleteAccount(s.supabaseUrl, s.supabaseKey, session).getOrThrow()
+            api.deleteAccount(s.supabaseUrl, s.supabaseKey, session).getOrElse { error ->
+                if (error is AuthException && error.code == 404) {
+                    throw IllegalStateException("The project is missing the delete_account function; rerun supabase/schema.sql")
+                }
+                throw error
+            }
             store.clear()
             Timber.i("Account deleted")
         }

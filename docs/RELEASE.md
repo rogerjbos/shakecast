@@ -4,8 +4,8 @@
 
 1. **Upload key.** Run `scripts/make-keystore.sh` from the repo root. It creates `shakecast-upload.jks` and `keystore.properties`, both gitignored. Back the `.jks` file up outside the repo. On another machine the same values can be supplied through `SHAKECAST_KEYSTORE`, `SHAKECAST_KEYSTORE_PASSWORD`, `SHAKECAST_KEY_ALIAS` and `SHAKECAST_KEY_PASSWORD`.
 2. **Play Console.** Create the app and enrol in Play App Signing. Upload the first bundle built with the key above; Play keeps the app signing key and your key becomes the upload key.
-3. **Sentry (optional).** Create a Sentry project and put its DSN in `shakecast.sentryDsn` in `gradle.properties` on the build machine, or in `SHAKECAST_SENTRY_DSN`. The switch in Settings > About only appears when the build carries a DSN. Stack traces stay readable without uploading mapping files because release builds keep names (`-dontobfuscate`); the mapping file is still written to `app/build/outputs/mapping/release/` if you later want it.
-4. **Supabase.** For a public listing, the project URL and anon key should be baked into the build rather than typed by the user. Until then the Settings fields remain.
+3. **Sentry (optional).** Create a Sentry project and put its DSN in `shakecast.sentryDsn` in `~/.gradle/gradle.properties` (the user-level file, not the tracked one in the repo) or in the `SHAKECAST_SENTRY_DSN` environment variable. Leave the tracked `gradle.properties` value blank so the DSN never lands in a commit. The switch in Settings > About only appears when the build carries a DSN. Stack traces stay readable without uploading mapping files because release builds keep names (`-dontobfuscate`); the mapping file is still written to `app/build/outputs/mapping/release/` if you later want it.
+4. **Supabase.** Rerun `supabase/schema.sql` on the project after upgrading; the in-app Delete account button calls a `delete_account` function it creates, and until then the button reports that the function is missing. For a public listing, the project URL and anon key should be baked into the build rather than typed by the user. Until then the Settings fields remain.
 
 ## Every release
 
@@ -25,7 +25,7 @@
 - **Privacy policy URL:** `https://github.com/rogerjbos/shakecast/blob/main/PRIVACY.md` (also linked from Settings > About).
 - **Account deletion:** the app has in-app deletion under Settings > Sync > Delete account. Play also asks for a web URL describing how to delete an account; the privacy policy's "Deleting your account" section serves, so give the same URL.
 - **Data safety form**, as the app behaves today:
-  - Collected only when the user turns the feature on: email address (sync account), app activity in the form of subscriptions, play positions and settings (sync), crash logs and device diagnostics (crash reports).
+  - Collected only when the user turns the feature on: email address (sync account), app activity in the form of subscriptions, play positions and settings (sync), crash logs and device diagnostics (crash reports). No device or other IDs: the Sentry per-install id is stripped before sending.
   - Not shared with third parties for advertising. Supabase and Sentry act as processors for the optional features above.
   - Data is encrypted in transit (HTTPS to Supabase and Sentry; podcast feeds use whatever the publisher offers, and the app permits plain HTTP because many feeds and enclosures still use it).
   - Users can request deletion in-app.

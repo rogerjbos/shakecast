@@ -34,7 +34,7 @@ The Supabase project is the one whose address you enter in Settings. Supabase's 
 
 ## Crash reports (optional)
 
-If you turn on "Send crash reports" in Settings > About, a report is sent to [Sentry](https://sentry.io) when the app crashes. It contains the stack trace, the app version, the Android version, the device model and the app's recent warning messages. It does not contain your email address, feeds, listening history or an advertising identifier. Sentry's handling of that data is described in their [privacy policy](https://sentry.io/privacy/). The switch is off by default and can be turned off at any time.
+If you turn on "Send crash reports" in Settings > About, a report is sent to [Sentry](https://sentry.io) when the app crashes. It contains the stack trace, the app version, the Android version, the device model and short labels of recent warnings such as "Feed refresh failed". It does not contain your email address, feed addresses, show titles, file names, listening history or an advertising identifier. Sentry's handling of that data is described in their [privacy policy](https://sentry.io/privacy/). The switch is off by default and can be turned off at any time.
 
 ## Permissions
 
