@@ -10,7 +10,7 @@ import com.rogerbos.shakecast.domain.model.DownloadState
 import kotlinx.coroutines.flow.Flow
 
 private const val WITH_PODCAST =
-    "SELECT e.*, p.title AS podcastTitle, p.artworkUrl AS podcastArtworkUrl FROM episodes e JOIN podcasts p ON p.id = e.podcastId"
+    "SELECT e.*, p.title AS podcastTitle, p.artworkUrl AS podcastArtworkUrl, p.feedUrl AS podcastFeedUrl FROM episodes e JOIN podcasts p ON p.id = e.podcastId"
 
 @Dao
 interface EpisodeDao {
@@ -31,6 +31,12 @@ interface EpisodeDao {
 
     @Query("$WITH_PODCAST WHERE e.lastPlayedAt IS NOT NULL ORDER BY e.lastPlayedAt DESC LIMIT 1")
     suspend fun lastPlayed(): EpisodeWithPodcast?
+
+    @Query(
+        "$WITH_PODCAST WHERE e.isPlayed = 0 AND e.downloadState = 'DOWNLOADED' AND e.id != :excludeId " +
+            "ORDER BY e.pubDateMs DESC LIMIT 1"
+    )
+    suspend fun newestUnplayedDownloaded(excludeId: Long): EpisodeWithPodcast?
 
     @Query("SELECT * FROM episodes WHERE podcastId = :podcastId AND guid = :guid")
     suspend fun getByGuid(podcastId: Long, guid: String): EpisodeEntity?

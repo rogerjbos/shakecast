@@ -40,6 +40,8 @@ class SettingsRepository @Inject constructor(
         val supabaseUrl = stringPreferencesKey("supabaseUrl")
         val supabaseKey = stringPreferencesKey("supabaseKey")
         val syncKey = stringPreferencesKey("syncKey")
+        val autoPlayNext = booleanPreferencesKey("autoPlayNext")
+        val rememberManualSkips = booleanPreferencesKey("rememberManualSkips")
         val lastSyncAtMs = longPreferencesKey("lastSyncAtMs")
         val lastSyncError = stringPreferencesKey("lastSyncError")
     }
@@ -62,7 +64,9 @@ class SettingsRepository @Inject constructor(
             syncEnabled = p[Keys.syncEnabled] ?: d.syncEnabled,
             supabaseUrl = p[Keys.supabaseUrl] ?: d.supabaseUrl,
             supabaseKey = p[Keys.supabaseKey] ?: d.supabaseKey,
-            syncKey = p[Keys.syncKey] ?: d.syncKey
+            syncKey = p[Keys.syncKey] ?: d.syncKey,
+            autoPlayNext = p[Keys.autoPlayNext] ?: d.autoPlayNext,
+            rememberManualSkips = p[Keys.rememberManualSkips] ?: d.rememberManualSkips
         )
     }
 
@@ -105,6 +109,8 @@ class SettingsRepository @Inject constructor(
             p[Keys.supabaseUrl] = next.supabaseUrl
             p[Keys.supabaseKey] = next.supabaseKey
             p[Keys.syncKey] = next.syncKey
+            p[Keys.autoPlayNext] = next.autoPlayNext
+            p[Keys.rememberManualSkips] = next.rememberManualSkips
         }
     }
 }

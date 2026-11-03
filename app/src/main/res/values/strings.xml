@@ -22,6 +22,22 @@
     <string name="cancel">Cancel</string>
 
     <string name="home_up_next">Up next</string>
+    <string name="home_queue">Queue</string>
+    <string name="queue_play_next">Play next</string>
+    <string name="queue_add">Add to queue</string>
+    <string name="queue_remove">Remove from queue</string>
+    <string name="cd_move_up">Move up</string>
+    <string name="sleep_timer">Sleep timer</string>
+    <string name="sleep_timer_off">Off</string>
+    <string name="sleep_timer_minutes">%1$d min</string>
+    <string name="sleep_timer_end_of_episode">End of episode</string>
+    <string name="sleep_timer_remaining">%1$s left</string>
+    <string name="sleep_timer_end_of_episode_short">End of ep.</string>
+    <string name="skips_remembered">%1$d saved</string>
+    <string name="skips_forget">Forget remembered skips for this episode</string>
+    <string name="skips_forget_body">The spans you skipped by hand in this episode will no longer be skipped automatically, on any synced phone.</string>
+    <string name="action_forget">Forget</string>
+    <string name="action_cancel">Cancel</string>
     <string name="home_empty_title">No subscriptions yet</string>
     <string name="home_empty_body">Search for a show to subscribe. The latest episodes download automatically on Wi-Fi.</string>
     <string name="home_find_podcasts">Find podcasts</string>
@@ -65,6 +81,11 @@
     <string name="settings_auto_skip_ads">Auto-skip detected ads</string>
     <string name="settings_auto_skip_ads_help">Uses the transcript a show publishes in its feed to find sponsor reads. Shows without a transcript play normally.</string>
     <string name="settings_test_connection">Test connection</string>
+    <string name="settings_section_playback">Playback</string>
+    <string name="settings_auto_play_next">Continue with the next episode</string>
+    <string name="settings_auto_play_next_help">When an episode ends, play the queue, or the newest unplayed download when the queue is empty.</string>
+    <string name="settings_remember_skips">Remember manual skips</string>
+    <string name="settings_remember_skips_help">Spans you skip by hand are saved and skipped automatically next time, including on your other synced phones.</string>
     <string name="settings_section_downloads">Downloads</string>
     <string name="settings_wifi_only">Download on Wi-Fi only</string>
     <string name="settings_keep_per_show">Episodes to keep per show</string>

@@ -123,6 +123,14 @@ fun PodcastDetailScreen(
     menuEpisode?.let { episode ->
         DropdownMenu(expanded = true, onDismissRequest = { menuEpisode = null }) {
             DropdownMenuItem(
+                text = { Text(stringResource(R.string.queue_play_next)) },
+                onClick = { viewModel.playNext(episode); menuEpisode = null }
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.queue_add)) },
+                onClick = { viewModel.addToQueue(episode); menuEpisode = null }
+            )
+            DropdownMenuItem(
                 text = { Text(stringResource(if (episode.isPlayed) R.string.episode_mark_unplayed else R.string.episode_mark_played)) },
                 onClick = { viewModel.togglePlayed(episode); menuEpisode = null }
             )

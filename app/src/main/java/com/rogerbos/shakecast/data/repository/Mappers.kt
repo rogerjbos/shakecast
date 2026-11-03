@@ -30,6 +30,7 @@ fun EpisodeWithPodcast.toDomain(json: Json): Episode {
         id = e.id,
         podcastId = e.podcastId,
         podcastTitle = podcastTitle,
+        podcastFeedUrl = podcastFeedUrl,
         podcastArtworkUrl = podcastArtworkUrl,
         guid = e.guid,
         title = e.title,

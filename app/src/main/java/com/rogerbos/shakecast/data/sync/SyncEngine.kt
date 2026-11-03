@@ -5,9 +5,11 @@ import com.rogerbos.shakecast.data.db.PodcastDao
 import com.rogerbos.shakecast.data.db.PodcastEntity
 import com.rogerbos.shakecast.data.db.SyncDao
 import com.rogerbos.shakecast.data.remote.sync.EpisodeStateRow
+import com.rogerbos.shakecast.data.remote.sync.ManualSkipRow
 import com.rogerbos.shakecast.data.remote.sync.SubscriptionRow
 import com.rogerbos.shakecast.data.remote.sync.SupabaseConfig
 import com.rogerbos.shakecast.data.remote.sync.SupabaseSyncApi
+import com.rogerbos.shakecast.data.repository.ManualSkipRepository
 import com.rogerbos.shakecast.data.repository.PodcastRepository
 import com.rogerbos.shakecast.data.settings.SettingsRepository
 import com.rogerbos.shakecast.di.IoDispatcher
@@ -43,6 +45,7 @@ class SyncEngine @Inject constructor(
     private val refreshFeeds: RefreshFeeds,
     private val markEpisodePlayed: MarkEpisodePlayed,
     private val unsubscribePodcast: UnsubscribePodcast,
+    private val manualSkipRepository: ManualSkipRepository,
     @IoDispatcher private val io: CoroutineDispatcher
 ) {
     private val mutex = Mutex()
@@ -65,6 +68,7 @@ class SyncEngine @Inject constructor(
                 val newPodcastIds = pullSubscriptions(config)
                 for (id in newPodcastIds) refreshFeeds.refresh(id)
                 pullEpisodeStates(config)
+                syncManualSkips(config)
             }.onSuccess {
                 settingsRepository.recordSyncResult(null)
                 Timber.i("Sync complete")
@@ -171,6 +175,21 @@ class SyncEngine @Inject constructor(
             }
         }
         Timber.d("Pulled %d episode states, applied %d", rows.size, applied)
+    }
+
+    private suspend fun syncManualSkips(config: SupabaseConfig) {
+        val dirty = manualSkipRepository.dirty()
+        if (dirty.isNotEmpty()) {
+            val rows = dirty.map { ManualSkipRow(config.syncKey, it.feedUrl, it.guid, it.startMs, it.endMs, it.deleted, it.updatedAtMs) }
+            api.pushManualSkips(config, rows).getOrThrow()
+            for (skip in dirty) manualSkipRepository.clearDirty(skip.id, skip.updatedAtMs)
+            Timber.d("Pushed %d manual skips", rows.size)
+        }
+        val remote = api.pullManualSkips(config).getOrThrow()
+        for (row in remote) {
+            manualSkipRepository.applyRemote(row.feedUrl, row.guid, row.startMs, row.endMs, row.deleted, row.updatedAtMs)
+        }
+        Timber.d("Pulled %d manual skips", remote.size)
     }
 
     private fun timestampOf(p: PodcastEntity) = SyncDecisions.subscriptionTimestamp(p.subscriptionUpdatedAtMs, p.subscribedAt)

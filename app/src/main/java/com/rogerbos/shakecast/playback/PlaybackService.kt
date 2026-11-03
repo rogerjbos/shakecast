@@ -3,6 +3,7 @@ package com.rogerbos.shakecast.playback
 import android.app.PendingIntent
 import android.content.Intent
 import android.media.AudioManager
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
@@ -19,6 +20,8 @@ import androidx.media3.session.MediaSessionService
 import com.rogerbos.shakecast.MainActivity
 import com.rogerbos.shakecast.R
 import com.rogerbos.shakecast.data.repository.EpisodeRepository
+import com.rogerbos.shakecast.data.repository.ManualSkipRepository
+import com.rogerbos.shakecast.data.repository.QueueRepository
 import com.rogerbos.shakecast.data.repository.PodcastRepository
 import com.rogerbos.shakecast.data.settings.Settings
 import com.rogerbos.shakecast.data.settings.SettingsRepository
@@ -26,6 +29,7 @@ import com.rogerbos.shakecast.data.sync.SyncEngine
 import com.rogerbos.shakecast.data.sync.SyncScheduler
 import com.rogerbos.shakecast.domain.model.AdSource
 import com.rogerbos.shakecast.domain.usecase.MarkEpisodePlayed
+import com.rogerbos.shakecast.domain.usecase.PickNextEpisode
 import com.rogerbos.shakecast.domain.usecase.ResolveAdBlocks
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -34,6 +38,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -53,6 +59,9 @@ class PlaybackService : MediaSessionService() {
     @Inject lateinit var haptics: Haptics
     @Inject lateinit var syncScheduler: SyncScheduler
     @Inject lateinit var syncEngine: SyncEngine
+    @Inject lateinit var queueRepository: QueueRepository
+    @Inject lateinit var manualSkipRepository: ManualSkipRepository
+    @Inject lateinit var pickNextEpisode: PickNextEpisode
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val handler = Handler(Looper.getMainLooper())
@@ -65,6 +74,9 @@ class PlaybackService : MediaSessionService() {
     private lateinit var adSkip: AdSkipController
     private lateinit var positionPersister: PositionPersister
     private lateinit var callback: ShakecastSessionCallback
+    private lateinit var sleepTimer: SleepTimer
+    private val skipRecorder = ManualSkipRecorder()
+    private val flushSkips = Runnable { flushRecordedSkips(force = false) }
     private var settings: Settings = Settings.DEFAULT
     private var blocksJob: Job? = null
     private var podcastAutoSkip = true
@@ -102,15 +114,30 @@ class PlaybackService : MediaSessionService() {
             onResolved = { clicks -> callback.resolveClicks(player, clicks) }
         )
 
+        sleepTimer = SleepTimer(player, onChanged = { endAtMs, endOfEpisode ->
+            mediaSession?.sessionExtras = Bundle().apply {
+                putLong(PlaybackCommands.EXTRA_SLEEP_END_AT_MS, endAtMs ?: 0L)
+                putBoolean(PlaybackCommands.EXTRA_SLEEP_END_OF_EPISODE, endOfEpisode)
+            }
+        })
+
         callback = ShakecastSessionCallback(
             scope = scope,
             episodeRepository = episodeRepository,
             settingsRepository = settingsRepository,
             mediaItemFactory = mediaItemFactory,
+            pickNextEpisode = pickNextEpisode,
             clickCounter = clickCounter,
             skipForward = ::skipForward,
             skipBack = ::skipBack,
-            toggleAutoSkip = { scope.launch { settingsRepository.update { it.copy(autoSkipAdsEnabled = !it.autoSkipAdsEnabled) } } }
+            toggleAutoSkip = { scope.launch { settingsRepository.update { it.copy(autoSkipAdsEnabled = !it.autoSkipAdsEnabled) } } },
+            setSleepTimer = { minutes ->
+                when {
+                    minutes == PlaybackCommands.SLEEP_END_OF_EPISODE -> sleepTimer.setEndOfEpisode()
+                    minutes > 0 -> sleepTimer.setMinutes(minutes)
+                    else -> sleepTimer.cancel()
+                }
+            }
         )
 
         val sessionActivity = PendingIntent.getActivity(
@@ -147,7 +174,7 @@ class PlaybackService : MediaSessionService() {
             player = player,
             mediaItemFactory = mediaItemFactory,
             onPosition = { id, pos -> scope.launch { episodeRepository.updatePosition(id, pos) } },
-            onEnded = { id -> scope.launch { markEpisodePlayed(id) } }
+            onEnded = { id -> onEpisodeEnded(id) }
         )
         positionPersister.attach()
 
@@ -158,7 +185,9 @@ class PlaybackService : MediaSessionService() {
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                flushRecordedSkips(force = true)
                 loadBlocksFor(mediaItem?.mediaId)
+                mediaItemFactory.episodeId(mediaItem?.mediaId)?.let { id -> scope.launch { queueRepository.remove(id) } }
                 syncScheduler.enqueueSoon()
             }
         })
@@ -224,15 +253,18 @@ class PlaybackService : MediaSessionService() {
             return
         }
         blocksJob = scope.launch {
-            episodeRepository.observe(id)
+            val episodeFlow = episodeRepository.observe(id)
                 .distinctUntilChanged { a, b -> a?.adSource == b?.adSource && a?.adBlocks == b?.adBlocks && a?.podcastId == b?.podcastId }
-                .collectLatest { episode ->
+            val manualFlow = episodeRepository.get(id)
+                ?.let { manualSkipRepository.observe(it.podcastFeedUrl, it.guid) }
+                ?: flowOf(emptyList())
+            combine(episodeFlow, manualFlow) { episode, manual -> episode to manual }.collectLatest { (episode, manual) ->
                 if (episode == null) return@collectLatest
                 val podcast = podcastRepository.get(episode.podcastId)
                 podcastAutoSkip = podcast?.autoSkipAds ?: true
                 adSkip.enabled = settings.autoSkipAdsEnabled && podcastAutoSkip
                 val usable = episode.adSource == AdSource.SKIPLIST || episode.adSource == AdSource.TRANSCRIPT
-                adSkip.setBlocks(mediaId, if (usable) episode.adBlocks else emptyList())
+                adSkip.setBlocks(mediaId, (if (usable) episode.adBlocks else emptyList()) + manual)
                 if (episode.adBlocks.isEmpty() && (episode.adSource == AdSource.NONE || episode.adSource == AdSource.MISALIGNED)) {
                     val durationSec = player.duration.takeIf { it != C.TIME_UNSET }?.let { it / 1000.0 }
                     val force = episode.adSource == AdSource.MISALIGNED
@@ -244,14 +276,57 @@ class PlaybackService : MediaSessionService() {
 
     private fun skipForward(source: String) {
         haptics.heavyClick()
+        val from = player.currentPosition
         player.seekForward()
         Timber.i("skip source=%s forward=%dms", source, player.skipForwardMs)
+        recordSkip { id, now -> skipRecorder.onSkipForward(id, from, player.currentPosition, now) }
     }
 
     private fun skipBack(source: String) {
         haptics.heavyClick()
+        val from = player.currentPosition
         player.seekBack()
         Timber.i("skip source=%s back=%dms", source, player.skipBackMs)
+        recordSkip { id, now -> skipRecorder.onSkipBack(id, from, player.currentPosition, now); null }
+    }
+
+    private fun recordSkip(event: (episodeId: Long, nowMs: Long) -> SkipSpan?) {
+        if (!settings.rememberManualSkips) return
+        val id = mediaItemFactory.episodeId(player.currentMediaItem?.mediaId) ?: return
+        event(id, System.currentTimeMillis())?.let(::persistSpan)
+        handler.removeCallbacks(flushSkips)
+        handler.postDelayed(flushSkips, SKIP_FLUSH_DELAY_MS)
+    }
+
+    private fun flushRecordedSkips(force: Boolean) {
+        handler.removeCallbacks(flushSkips)
+        skipRecorder.flush(System.currentTimeMillis(), force)?.let(::persistSpan)
+        if (skipRecorder.hasPending) handler.postDelayed(flushSkips, SKIP_FLUSH_DELAY_MS)
+    }
+
+    private fun persistSpan(span: SkipSpan) {
+        scope.launch {
+            val episode = episodeRepository.get(span.episodeId) ?: return@launch
+            val durationMs = episode.durationSec?.let { it * 1000L }
+            val end = if (durationMs != null && durationMs > 0) minOf(span.endMs, durationMs) else span.endMs
+            if (end - span.startMs < MIN_RECORDED_SPAN_MS) return@launch
+            manualSkipRepository.record(episode.podcastFeedUrl, episode.guid, span.startMs, end)
+            Timber.i("Remembered manual skip %d-%d ms in %s", span.startMs, end, episode.title)
+            syncScheduler.enqueueSoon()
+        }
+    }
+
+    private fun onEpisodeEnded(endedId: Long) {
+        scope.launch {
+            markEpisodePlayed(endedId)
+            if (sleepTimer.consumeEndOfEpisode()) return@launch
+            val next = pickNextEpisode.afterEnded(endedId) ?: return@launch
+            Timber.i("Auto-playing next: %s", next.title)
+            queueRepository.remove(next.id)
+            player.setMediaItem(mediaItemFactory.create(next), next.positionMs)
+            player.prepare()
+            player.play()
+        }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
@@ -263,6 +338,8 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        flushRecordedSkips(force = true)
+        sleepTimer.cancel(notify = false)
         accelerometer.stop()
         positionPersister.detach()
         adSkip.detach()
@@ -275,5 +352,7 @@ class PlaybackService : MediaSessionService() {
 
     private companion object {
         const val REMOTE_SEEK_TOLERANCE_MS = 3_000L
+        const val SKIP_FLUSH_DELAY_MS = 10_500L
+        const val MIN_RECORDED_SPAN_MS = 15_000L
     }
 }

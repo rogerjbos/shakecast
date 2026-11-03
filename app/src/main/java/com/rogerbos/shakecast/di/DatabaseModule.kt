@@ -3,6 +3,8 @@ package com.rogerbos.shakecast.di
 import android.content.Context
 import androidx.room.Room
 import com.rogerbos.shakecast.data.db.EpisodeDao
+import com.rogerbos.shakecast.data.db.ManualSkipDao
+import com.rogerbos.shakecast.data.db.QueueDao
 import com.rogerbos.shakecast.data.db.PodcastDao
 import com.rogerbos.shakecast.data.db.ShakecastDatabase
 import com.rogerbos.shakecast.data.db.SyncDao
@@ -31,4 +33,10 @@ object DatabaseModule {
 
     @Provides
     fun provideSyncDao(db: ShakecastDatabase): SyncDao = db.syncDao()
+
+    @Provides
+    fun provideQueueDao(db: ShakecastDatabase): QueueDao = db.queueDao()
+
+    @Provides
+    fun provideManualSkipDao(db: ShakecastDatabase): ManualSkipDao = db.manualSkipDao()
 }

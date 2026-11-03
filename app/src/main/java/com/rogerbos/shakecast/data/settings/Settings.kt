@@ -23,7 +23,9 @@ data class Settings(
     val syncEnabled: Boolean,
     val supabaseUrl: String,
     val supabaseKey: String,
-    val syncKey: String
+    val syncKey: String,
+    val autoPlayNext: Boolean,
+    val rememberManualSkips: Boolean
 ) {
     companion object {
         val DEFAULT = Settings(
@@ -42,7 +44,9 @@ data class Settings(
             syncEnabled = false,
             supabaseUrl = "",
             supabaseKey = "",
-            syncKey = ""
+            syncKey = "",
+            autoPlayNext = true,
+            rememberManualSkips = true
         )
     }
 }

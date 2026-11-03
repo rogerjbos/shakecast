@@ -27,3 +27,15 @@ data class EpisodeStateRow(
     @SerialName("played_at_ms") val playedAtMs: Long? = null,
     @SerialName("updated_at_ms") val updatedAtMs: Long
 )
+
+/** Row of the `manual_skips` table; `deleted` marks a span the user chose to forget. */
+@Serializable
+data class ManualSkipRow(
+    @SerialName("sync_key") val syncKey: String,
+    @SerialName("feed_url") val feedUrl: String,
+    val guid: String,
+    @SerialName("start_ms") val startMs: Long,
+    @SerialName("end_ms") val endMs: Long,
+    val deleted: Boolean = false,
+    @SerialName("updated_at_ms") val updatedAtMs: Long
+)

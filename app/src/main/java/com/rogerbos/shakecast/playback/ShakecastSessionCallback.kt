@@ -17,6 +17,7 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.rogerbos.shakecast.data.repository.EpisodeRepository
 import com.rogerbos.shakecast.data.settings.SettingsRepository
+import com.rogerbos.shakecast.domain.usecase.PickNextEpisode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.guava.future
 import timber.log.Timber
@@ -27,10 +28,12 @@ class ShakecastSessionCallback(
     private val episodeRepository: EpisodeRepository,
     private val settingsRepository: SettingsRepository,
     private val mediaItemFactory: MediaItemFactory,
+    private val pickNextEpisode: PickNextEpisode,
     private val clickCounter: MediaButtonClickCounter,
     private val skipForward: (source: String) -> Unit,
     private val skipBack: (source: String) -> Unit,
-    private val toggleAutoSkip: () -> Unit
+    private val toggleAutoSkip: () -> Unit,
+    private val setSleepTimer: (minutes: Int) -> Unit
 ) : MediaSession.Callback {
 
     override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): ConnectionResult {
@@ -52,6 +55,7 @@ class ShakecastSessionCallback(
             PlaybackCommands.ACTION_SKIP_FORWARD -> skipForward("custom-command")
             PlaybackCommands.ACTION_SKIP_BACK -> skipBack("custom-command")
             PlaybackCommands.ACTION_TOGGLE_AUTO_SKIP -> toggleAutoSkip()
+            PlaybackCommands.ACTION_SET_SLEEP_TIMER -> setSleepTimer(args.getInt(PlaybackCommands.ARG_SLEEP_MINUTES, 0))
             else -> return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
         }
         return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
@@ -94,7 +98,7 @@ class ShakecastSessionCallback(
         mediaSession: MediaSession,
         controller: MediaSession.ControllerInfo
     ): ListenableFuture<MediaItemsWithStartPosition> = scope.future {
-        val episode = episodeRepository.lastPlayed()
+        val episode = pickNextEpisode.forResumption()
             ?: throw UnsupportedOperationException("Nothing to resume")
         Timber.i("Resuming %s at %d ms", episode.title, episode.positionMs)
         MediaItemsWithStartPosition(listOf(mediaItemFactory.create(episode)), 0, episode.positionMs)

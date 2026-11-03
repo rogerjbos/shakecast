@@ -5,6 +5,7 @@ data class Episode(
     val podcastId: Long,
     val podcastTitle: String,
     val podcastArtworkUrl: String,
+    val podcastFeedUrl: String,
     val guid: String,
     val title: String,
     val description: String,

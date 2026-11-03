@@ -2,6 +2,7 @@ package com.rogerbos.shakecast.playback
 
 import android.content.ComponentName
 import android.content.Context
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import androidx.media3.common.C
@@ -30,10 +31,12 @@ data class PlayerSnapshot(
     val isBuffering: Boolean,
     val positionMs: Long,
     val durationMs: Long,
-    val speed: Float
+    val speed: Float,
+    val sleepEndAtMs: Long?,
+    val sleepEndOfEpisode: Boolean
 ) {
     companion object {
-        val EMPTY = PlayerSnapshot(false, null, "", "", null, false, false, 0, 0, 1f)
+        val EMPTY = PlayerSnapshot(false, null, "", "", null, false, false, 0, 0, 1f, null, false)
     }
 }
 
@@ -55,6 +58,10 @@ class PlayerConnection @Inject constructor(
         override fun onEvents(player: Player, events: Player.Events) = refresh()
     }
 
+    private val controllerListener = object : MediaController.Listener {
+        override fun onExtrasChanged(controller: MediaController, extras: Bundle) = refresh()
+    }
+
     private val poll = object : Runnable {
         override fun run() {
             refresh()
@@ -65,7 +72,7 @@ class PlayerConnection @Inject constructor(
     fun connect() {
         if (controllerFuture != null) return
         val token = SessionToken(context, ComponentName(context, PlaybackService::class.java))
-        val future = MediaController.Builder(context, token).buildAsync()
+        val future = MediaController.Builder(context, token).setListener(controllerListener).buildAsync()
         controllerFuture = future
         future.addListener({
             runCatching { future.get() }
@@ -120,6 +127,12 @@ class PlayerConnection @Inject constructor(
 
     fun setSpeed(speed: Float) = withController { it.setPlaybackSpeed(speed) }
 
+    /** Minutes until pause, 0 to cancel, or [PlaybackCommands.SLEEP_END_OF_EPISODE]. */
+    fun setSleepTimer(minutes: Int) = withController { c ->
+        val args = Bundle().apply { putInt(PlaybackCommands.ARG_SLEEP_MINUTES, minutes) }
+        c.sendCustomCommand(PlaybackCommands.setSleepTimer, args)
+    }
+
     private fun refresh() {
         val c = controller ?: run { _state.value = PlayerSnapshot.EMPTY; return }
         val item = c.currentMediaItem
@@ -133,7 +146,9 @@ class PlayerConnection @Inject constructor(
             isBuffering = c.playbackState == Player.STATE_BUFFERING,
             positionMs = c.currentPosition.coerceAtLeast(0),
             durationMs = c.duration.takeIf { it != C.TIME_UNSET }?.coerceAtLeast(0) ?: 0,
-            speed = c.playbackParameters.speed
+            speed = c.playbackParameters.speed,
+            sleepEndAtMs = c.sessionExtras.getLong(PlaybackCommands.EXTRA_SLEEP_END_AT_MS, 0L).takeIf { it > 0 },
+            sleepEndOfEpisode = c.sessionExtras.getBoolean(PlaybackCommands.EXTRA_SLEEP_END_OF_EPISODE, false)
         )
         if (c.isPlaying) {
             handler.removeCallbacks(poll)

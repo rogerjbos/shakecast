@@ -114,14 +114,16 @@ fun SettingsScreen(
             SwitchRow(stringResource(R.string.settings_haptics), s.hapticsEnabled) { v -> viewModel.update { it.copy(hapticsEnabled = v) } }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            SectionHeader(stringResource(R.string.settings_section_playback))
+            SwitchRow(stringResource(R.string.settings_auto_play_next), s.autoPlayNext) { v -> viewModel.update { it.copy(autoPlayNext = v) } }
+            HelpText(stringResource(R.string.settings_auto_play_next_help))
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             SectionHeader(stringResource(R.string.settings_section_ads))
             SwitchRow(stringResource(R.string.settings_auto_skip_ads), s.autoSkipAdsEnabled) { v -> viewModel.update { it.copy(autoSkipAdsEnabled = v) } }
-            Text(
-                stringResource(R.string.settings_auto_skip_ads_help),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-            )
+            HelpText(stringResource(R.string.settings_auto_skip_ads_help))
+            SwitchRow(stringResource(R.string.settings_remember_skips), s.rememberManualSkips) { v -> viewModel.update { it.copy(rememberManualSkips = v) } }
+            HelpText(stringResource(R.string.settings_remember_skips_help))
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             SectionHeader(stringResource(R.string.settings_section_downloads))
@@ -227,6 +229,16 @@ private fun sensitivityLabel(level: ShakeSensitivity): String = when (level) {
     ShakeSensitivity.LOW -> stringResource(R.string.sensitivity_low)
     ShakeSensitivity.MEDIUM -> stringResource(R.string.sensitivity_medium)
     ShakeSensitivity.HIGH -> stringResource(R.string.sensitivity_high)
+}
+
+@Composable
+private fun HelpText(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+    )
 }
 
 @Composable
