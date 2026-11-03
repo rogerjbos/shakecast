@@ -10,7 +10,7 @@ import kotlinx.serialization.json.jsonObject
  * Sync credentials never leave the device; unknown keys from newer builds are ignored.
  */
 object SettingsSync {
-    val localOnlyKeys = setOf("syncEnabled", "supabaseUrl", "supabaseKey", "syncKey")
+    val localOnlyKeys = setOf("syncEnabled", "supabaseUrl", "supabaseKey")
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 

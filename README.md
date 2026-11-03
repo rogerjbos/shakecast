@@ -20,7 +20,7 @@ A glove-friendly Android podcast player. Shake the phone hard to skip ahead 30 s
 - Chapters from Podcasting 2.0 `<podcast:chapters>` JSON or ID3 CHAP frames: chapter list, previous/next buttons, ticks on the seek bar, optional shake-to-next-chapter, and chapters titled like ads are skipped automatically.
 - Trim silence and a volume boost of up to +9 dB.
 - Per-show intro and outro skip, synced with the subscription.
-- Settings sync: everything except the Supabase credentials follows you between phones, newest change wins.
+- Settings sync: everything except the Supabase project details follows you between phones, newest change wins.
 - Remembered manual skips: spans you skip by hand are saved per episode and skipped automatically next time, on every synced phone.
 - Automatic ad skipping: the phrase/regex detector from `podcast3r/skip_ads.py` is ported to Kotlin and runs on the feed's `<podcast:transcript>`. Blocks are only trusted when the transcript lines up with the local file, so dynamically inserted ads never cause content to be skipped.
 
@@ -42,10 +42,12 @@ Requires JDK 17 or 21 and Android SDK platform 36.
 
 ## Syncing between phones
 
-Subscriptions, play positions and played state can be kept in step across phones through a free [Supabase](https://supabase.com) project:
+Subscriptions, play positions, played state, manual skips and settings can be kept in step across phones through a free [Supabase](https://supabase.com) project:
 
-1. Create a project, open the SQL editor and run `supabase/schema.sql`.
-2. In Settings > Sync on the first phone, enter the project URL (Project Settings > API) and the anon / publishable key, tap **Generate** for a sync key, and turn sync on.
-3. On every other phone enter the same URL, key and sync key.
+1. Create a project, open the SQL editor and run `supabase/schema.sql`. Under Authentication > Providers make sure Email is enabled; turn off "Confirm email" if you would rather skip the confirmation step.
+2. In Settings > Sync on the first phone, enter the project URL (Project Settings > API) and the anon / publishable key, then tap **Create account** with an email and password.
+3. On every other phone enter the same URL and key and **Sign in** with that account. Turn sync on.
 
-The schema is additive: rerun `supabase/schema.sql` after upgrading to pick up new tables. Each phone pushes its own changes and pulls the rest. Newer timestamps win, a played episode on one phone is deleted on the others, and a paused episode jumps to the position the other phone reached. Downloads stay per phone.
+Every row is owned by a Supabase Auth user and row level security lets a signed-in user read and write only their own rows, so one person's data cannot be reached with another's credentials. The phone keeps the session's access and refresh tokens in private app storage, refreshes them silently, and never stores the password. Signing in pushes the phone's whole library so a new account starts with everything the phone already has.
+
+Rerun `supabase/schema.sql` after upgrading; it is safe to run repeatedly. Upgrading from a build that used a shared sync key drops those tables, and each phone repopulates the account on its first sync after signing in. Each phone pushes its own changes and pulls the rest. Newer timestamps win, a played episode on one phone is deleted on the others, and a paused episode jumps to the position the other phone reached. Downloads stay per phone.

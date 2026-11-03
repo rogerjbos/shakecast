@@ -9,13 +9,14 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 
-/** Connection details for one Supabase project; `syncKey` scopes rows to one user. */
-data class SupabaseConfig(val url: String, val apiKey: String, val syncKey: String) {
-    val isComplete: Boolean get() = url.isNotBlank() && apiKey.isNotBlank() && syncKey.isNotBlank()
-}
+/**
+ * Connection details for one Supabase project plus the signed-in user's access token.
+ * Row level security on the server scopes every table to `userId`.
+ */
+data class SupabaseConfig(val url: String, val apiKey: String, val accessToken: String, val userId: String)
 
 /**
- * Minimal PostgREST client for the two sync tables. Upserts use
+ * Minimal PostgREST client for the sync tables. Upserts use
  * `resolution=merge-duplicates`; a database trigger keeps the newer row.
  */
 class SupabaseSyncApi @Inject constructor(
@@ -49,7 +50,7 @@ class SupabaseSyncApi @Inject constructor(
     /** Reads one row to confirm the URL, key, tables and policies are all in place. */
     fun ping(config: SupabaseConfig): Result<String> = runCatching {
         val url = tableUrl(config, SUBSCRIPTIONS).newBuilder()
-            .addQueryParameter("select", "sync_key")
+            .addQueryParameter("select", "user_id")
             .addQueryParameter("limit", "1")
             .build()
         client.newCall(request(config, url).get().build()).execute().use { response ->
@@ -75,7 +76,7 @@ class SupabaseSyncApi @Inject constructor(
         while (true) {
             val url = tableUrl(config, table).newBuilder()
                 .addQueryParameter("select", "*")
-                .addQueryParameter("sync_key", "eq.${config.syncKey}")
+                .addQueryParameter("user_id", "eq.${config.userId}")
                 .addQueryParameter("order", "updated_at_ms.asc")
                 .addQueryParameter("limit", PAGE.toString())
                 .addQueryParameter("offset", offset.toString())
@@ -99,15 +100,11 @@ class SupabaseSyncApi @Inject constructor(
         return base.newBuilder().addPathSegments("rest/v1/$table").build()
     }
 
-    private fun request(config: SupabaseConfig, url: HttpUrl): Request.Builder {
-        val key = config.apiKey.trim()
-        val builder = Request.Builder().url(url)
-            .header("apikey", key)
-            .header("x-sync-key", config.syncKey.trim())
+    private fun request(config: SupabaseConfig, url: HttpUrl): Request.Builder =
+        Request.Builder().url(url)
+            .header("apikey", config.apiKey.trim())
+            .header("Authorization", "Bearer ${config.accessToken}")
             .header("Content-Type", "application/json")
-        if (key.startsWith("eyJ")) builder.header("Authorization", "Bearer $key")
-        return builder
-    }
 
     private fun describe(code: Int, body: String?): String {
         val detail = body?.trim()?.take(200).orEmpty()

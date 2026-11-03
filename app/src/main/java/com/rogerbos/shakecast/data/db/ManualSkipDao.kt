@@ -28,4 +28,8 @@ interface ManualSkipDao {
 
     @Query("UPDATE manual_skips SET syncDirty = 0 WHERE id = :id AND updatedAtMs <= :upToMs")
     suspend fun clearDirty(id: Long, upToMs: Long)
+
+    /** Re-publishes every span, used after signing in to a new account. */
+    @Query("UPDATE manual_skips SET syncDirty = 1")
+    suspend fun markAllDirty()
 }

@@ -51,6 +51,10 @@ interface PodcastDao {
     @Query("UPDATE podcasts SET syncDirty = 0 WHERE id = :id AND subscriptionUpdatedAtMs <= :upToMs")
     suspend fun clearDirty(id: Long, upToMs: Long)
 
+    /** Re-publishes every subscription, used after signing in to a new account. */
+    @Query("UPDATE podcasts SET syncDirty = 1")
+    suspend fun markAllDirty()
+
     @Query(
         "UPDATE podcasts SET subscriptionUpdatedAtMs = :updatedAtMs, syncDirty = 0, " +
             "introSkipSec = COALESCE(:introSkipSec, introSkipSec), outroSkipSec = COALESCE(:outroSkipSec, outroSkipSec) " +

@@ -17,12 +17,13 @@ class SupabaseSyncApiTest {
     private val json = Json { ignoreUnknownKeys = true }
     private lateinit var api: SupabaseSyncApi
     private lateinit var config: SupabaseConfig
+    private val USER = "6f1d2a3b-0000-4000-8000-000000000001"
 
     @Before
     fun setUp() {
         server.start()
         api = SupabaseSyncApi(OkHttpClient(), json)
-        config = SupabaseConfig(url = server.url("/").toString(), apiKey = "sb_publishable_abc", syncKey = "shakecast-1234")
+        config = SupabaseConfig(url = server.url("/").toString(), apiKey = "sb_publishable_abc", accessToken = "user-jwt", userId = USER)
     }
 
     @After
@@ -32,28 +33,30 @@ class SupabaseSyncApiTest {
     fun upsertSendsMergeDuplicatesAndScopingHeaders() {
         server.enqueue(MockResponse().setResponseCode(201))
 
-        val row = EpisodeStateRow("shakecast-1234", "https://feed", "guid-1", 1234, false, null, 99)
+        val row = EpisodeStateRow(USER, "https://feed", "guid-1", 1234, false, null, 99)
         api.pushEpisodeStates(config, listOf(row)).getOrThrow()
 
         val request = server.takeRequest()
         assertEquals("POST", request.method)
         assertEquals("/rest/v1/episode_states", request.path)
         assertEquals("sb_publishable_abc", request.getHeader("apikey"))
-        assertEquals("shakecast-1234", request.getHeader("x-sync-key"))
+        assertEquals("Bearer user-jwt", request.getHeader("Authorization"))
+        assertNull(request.getHeader("x-sync-key"))
         assertEquals("resolution=merge-duplicates,return=minimal", request.getHeader("Prefer"))
-        assertNull(request.getHeader("Authorization"))
         val sent = json.decodeFromString<List<EpisodeStateRow>>(request.body.readUtf8())
         assertEquals(listOf(row), sent)
     }
 
     @Test
-    fun legacyJwtKeyIsAlsoSentAsBearer() {
+    fun anonKeyIsNeverUsedAsBearer() {
         server.enqueue(MockResponse().setResponseCode(201))
         val jwtConfig = config.copy(apiKey = "eyJhbGciOiJIUzI1NiJ9.x.y")
 
-        api.pushSubscriptions(jwtConfig, listOf(SubscriptionRow(syncKey = "k", feedUrl = "f", subscribed = false, updatedAtMs = 1))).getOrThrow()
+        api.pushSubscriptions(jwtConfig, listOf(SubscriptionRow(userId = USER, feedUrl = "f", subscribed = false, updatedAtMs = 1))).getOrThrow()
 
-        assertEquals("Bearer eyJhbGciOiJIUzI1NiJ9.x.y", server.takeRequest().getHeader("Authorization"))
+        val request = server.takeRequest()
+        assertEquals("eyJhbGciOiJIUzI1NiJ9.x.y", request.getHeader("apikey"))
+        assertEquals("Bearer user-jwt", request.getHeader("Authorization"))
     }
 
     @Test
@@ -63,9 +66,9 @@ class SupabaseSyncApiTest {
     }
 
     @Test
-    fun pullFiltersBySyncKeyAndPagesUntilShortPage() {
-        val page = (0 until 1000).map { SubscriptionRow("shakecast-1234", "https://feed/$it", subscribed = true, updatedAtMs = it.toLong()) }
-        val tail = listOf(SubscriptionRow("shakecast-1234", "https://feed/last", subscribed = true, updatedAtMs = 5000))
+    fun pullFiltersByUserAndPagesUntilShortPage() {
+        val page = (0 until 1000).map { SubscriptionRow(USER, "https://feed/$it", subscribed = true, updatedAtMs = it.toLong()) }
+        val tail = listOf(SubscriptionRow(USER, "https://feed/last", subscribed = true, updatedAtMs = 5000))
         server.enqueue(MockResponse().setBody(json.encodeToString(page)))
         server.enqueue(MockResponse().setBody(json.encodeToString(tail)))
 
@@ -74,7 +77,7 @@ class SupabaseSyncApiTest {
         assertEquals(1001, rows.size)
         val first = server.takeRequest()
         assertEquals("GET", first.method)
-        assertEquals("eq.shakecast-1234", first.requestUrl?.queryParameter("sync_key"))
+        assertEquals("eq.$USER", first.requestUrl?.queryParameter("user_id"))
         assertEquals("0", first.requestUrl?.queryParameter("offset"))
         assertEquals("1000", server.takeRequest().requestUrl?.queryParameter("offset"))
     }
@@ -93,6 +96,6 @@ class SupabaseSyncApiTest {
     fun pingReportsOkWhenTableIsReadable() {
         server.enqueue(MockResponse().setBody("[]"))
         assertEquals("OK", api.ping(config).getOrThrow())
-        assertEquals("/rest/v1/subscriptions?select=sync_key&limit=1", server.takeRequest().path)
+        assertEquals("/rest/v1/subscriptions?select=user_id&limit=1", server.takeRequest().path)
     }
 }

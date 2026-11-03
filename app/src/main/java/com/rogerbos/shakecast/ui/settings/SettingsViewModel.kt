@@ -3,8 +3,10 @@ package com.rogerbos.shakecast.ui.settings
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rogerbos.shakecast.data.auth.AuthManager
+import com.rogerbos.shakecast.data.auth.AuthSession
+import com.rogerbos.shakecast.data.auth.SignUpResult
 import com.rogerbos.shakecast.data.refresh.RefreshScheduler
-import com.rogerbos.shakecast.data.remote.sync.SupabaseConfig
 import com.rogerbos.shakecast.data.remote.sync.SupabaseSyncApi
 import com.rogerbos.shakecast.data.settings.Settings
 import com.rogerbos.shakecast.data.settings.SettingsRepository
@@ -21,6 +23,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -30,10 +33,17 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.UUID
 import javax.inject.Inject
 
 data class ShakeTestState(val active: Boolean, val magnitudeG: Float, val peaks: Int, val shakes: Int)
+
+/** Sign-in form feedback; [busy] disables the buttons while a request is in flight. */
+data class AuthUiState(val session: AuthSession?, val busy: Boolean, val message: AuthMessage?)
+
+sealed interface AuthMessage {
+    data object ConfirmEmail : AuthMessage
+    data class Error(val text: String) : AuthMessage
+}
 
 data class SettingsUiState(
     val settings: Settings,
@@ -41,11 +51,13 @@ data class SettingsUiState(
     val syncTestResult: String?,
     val syncStatus: SettingsRepository.SyncStatus,
     val syncing: Boolean,
-    val opmlStatus: String?
+    val opmlStatus: String?,
+    val auth: AuthUiState
 ) {
     companion object {
         val EMPTY = SettingsUiState(
-            Settings.DEFAULT, ShakeTestState(false, 0f, 0, 0), null, SettingsRepository.SyncStatus(null, null), false, null
+            Settings.DEFAULT, ShakeTestState(false, 0f, 0, 0), null, SettingsRepository.SyncStatus(null, null), false, null,
+            AuthUiState(null, false, null)
         )
     }
 }
@@ -57,6 +69,7 @@ class SettingsViewModel @Inject constructor(
     private val refreshScheduler: RefreshScheduler,
     private val syncScheduler: SyncScheduler,
     private val syncApi: SupabaseSyncApi,
+    private val authManager: AuthManager,
     private val importOpml: ImportOpml,
     private val exportOpml: ExportOpml
 ) : ViewModel() {
@@ -65,13 +78,19 @@ class SettingsViewModel @Inject constructor(
 
     private val shakeTest = MutableStateFlow(ShakeTestState(false, 0f, 0, 0))
     private val syncTestResult = MutableStateFlow<String?>(null)
+    private val authBusy = MutableStateFlow(false)
+    private val authMessage = MutableStateFlow<AuthMessage?>(null)
     private var detector: ShakeDetector? = null
     private var source: AccelerometerSource? = null
     private var pollJob: Job? = null
 
+    private val auth: Flow<AuthUiState> = combine(authManager.session, authBusy, authMessage) { session, busy, message ->
+        AuthUiState(session, busy, message)
+    }
+
     val state: StateFlow<SettingsUiState> = combine(
         settingsRepository.settings, shakeTest, syncTestResult,
-        settingsRepository.syncStatus, syncScheduler.isSyncing(), opmlStatus
+        settingsRepository.syncStatus, syncScheduler.isSyncing(), opmlStatus, auth
     ) { values ->
         SettingsUiState(
             settings = values[0] as Settings,
@@ -79,7 +98,8 @@ class SettingsViewModel @Inject constructor(
             syncTestResult = values[2] as String?,
             syncStatus = values[3] as SettingsRepository.SyncStatus,
             syncing = values[4] as Boolean,
-            opmlStatus = values[5] as String?
+            opmlStatus = values[5] as String?,
+            auth = values[6] as AuthUiState
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState.EMPTY)
 
@@ -135,16 +155,59 @@ class SettingsViewModel @Inject constructor(
 
     fun syncNow() = syncScheduler.enqueueNow()
 
-    fun generateSyncKey() {
-        val key = "shakecast-" + UUID.randomUUID().toString().replace("-", "").take(10)
-        update { it.copy(syncKey = key) }
+    fun signIn(email: String, password: String) = authRequest {
+        authManager.signIn(email, password).fold(
+            onSuccess = {
+                afterSignIn()
+                null
+            },
+            onFailure = { AuthMessage.Error(it.message ?: it.javaClass.simpleName) }
+        )
+    }
+
+    fun signUp(email: String, password: String) = authRequest {
+        authManager.signUp(email, password).fold(
+            onSuccess = { result ->
+                when (result) {
+                    is SignUpResult.SignedIn -> {
+                        afterSignIn()
+                        null
+                    }
+                    SignUpResult.ConfirmEmail -> AuthMessage.ConfirmEmail
+                }
+            },
+            onFailure = { AuthMessage.Error(it.message ?: it.javaClass.simpleName) }
+        )
+    }
+
+    fun signOut() = authRequest {
+        authManager.signOut()
+        syncScheduler.cancelPeriodic()
+        syncTestResult.value = null
+        null
+    }
+
+    private fun authRequest(block: suspend () -> AuthMessage?) {
+        if (authBusy.value) return
+        viewModelScope.launch {
+            authBusy.value = true
+            authMessage.value = null
+            authMessage.value = block()
+            authBusy.value = false
+        }
+    }
+
+    private suspend fun afterSignIn() {
+        if (settingsRepository.current().syncEnabled) {
+            syncScheduler.schedulePeriodic()
+            syncScheduler.enqueueNow()
+        }
     }
 
     fun testSync() {
         viewModelScope.launch {
-            val s = settingsRepository.current()
             syncTestResult.value = withContext(Dispatchers.IO) {
-                syncApi.ping(SupabaseConfig(s.supabaseUrl, s.supabaseKey, s.syncKey)).fold(
+                authManager.config().mapCatching { syncApi.ping(it).getOrThrow() }.fold(
                     onSuccess = { it },
                     onFailure = { it.message ?: it.javaClass.simpleName }
                 )

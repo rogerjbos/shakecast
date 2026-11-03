@@ -1,51 +1,67 @@
--- Shakecast sync schema. Run once in the Supabase SQL editor.
--- Rows are scoped by a sync key the phones send in the x-sync-key header;
--- row level security makes each key see only its own rows.
+-- Shakecast sync schema. Run in the Supabase SQL editor; safe to rerun after upgrades.
+-- Every row belongs to a signed-in Supabase Auth user (auth.uid()); row level
+-- security makes each user see only their own rows. Phones sign in with email
+-- and password and send the user's access token as a bearer token.
+--
+-- Upgrading from the sync-key build: the old tables were keyed by a shared
+-- x-sync-key header and are dropped below. Nothing is lost: after signing in
+-- each phone pushes its whole library again, newest timestamp wins.
+
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'subscriptions' and column_name = 'sync_key'
+  ) then
+    drop table if exists public.subscriptions;
+    drop table if exists public.episode_states;
+    drop table if exists public.manual_skips;
+    drop table if exists public.settings;
+  end if;
+end $$;
 
 create table if not exists public.subscriptions (
-  sync_key      text   not null,
-  feed_url      text   not null,
-  title         text,
-  author        text,
-  itunes_id     bigint,
-  artwork_url   text,
-  subscribed    boolean not null default true,
-  updated_at_ms bigint not null,
-  primary key (sync_key, feed_url)
+  user_id        uuid    not null default auth.uid() references auth.users (id) on delete cascade,
+  feed_url       text    not null,
+  title          text,
+  author         text,
+  itunes_id      bigint,
+  artwork_url    text,
+  subscribed     boolean not null default true,
+  intro_skip_sec integer,
+  outro_skip_sec integer,
+  updated_at_ms  bigint  not null,
+  primary key (user_id, feed_url)
 );
 
 create table if not exists public.episode_states (
-  sync_key      text   not null,
-  feed_url      text   not null,
-  guid          text   not null,
-  position_ms   bigint not null default 0,
+  user_id       uuid    not null default auth.uid() references auth.users (id) on delete cascade,
+  feed_url      text    not null,
+  guid          text    not null,
+  position_ms   bigint  not null default 0,
   is_played     boolean not null default false,
   played_at_ms  bigint,
-  updated_at_ms bigint not null,
-  primary key (sync_key, feed_url, guid)
-);
-
--- Per-show intro/outro skip lengths travel with the subscription (added later; safe to rerun).
-alter table public.subscriptions add column if not exists intro_skip_sec integer;
-alter table public.subscriptions add column if not exists outro_skip_sec integer;
-
--- One JSON document of app settings per sync key.
-create table if not exists public.settings (
-  sync_key      text   primary key,
-  settings      text   not null,
-  updated_at_ms bigint not null
+  updated_at_ms bigint  not null,
+  primary key (user_id, feed_url, guid)
 );
 
 -- Spans the user skipped by hand, replayed automatically on every synced phone.
 create table if not exists public.manual_skips (
-  sync_key      text   not null,
-  feed_url      text   not null,
-  guid          text   not null,
-  start_ms      bigint not null,
-  end_ms        bigint not null,
+  user_id       uuid    not null default auth.uid() references auth.users (id) on delete cascade,
+  feed_url      text    not null,
+  guid          text    not null,
+  start_ms      bigint  not null,
+  end_ms        bigint  not null,
   deleted       boolean not null default false,
-  updated_at_ms bigint not null,
-  primary key (sync_key, feed_url, guid, start_ms)
+  updated_at_ms bigint  not null,
+  primary key (user_id, feed_url, guid, start_ms)
+);
+
+-- One JSON document of app settings per user.
+create table if not exists public.settings (
+  user_id       uuid   primary key default auth.uid() references auth.users (id) on delete cascade,
+  settings      text   not null,
+  updated_at_ms bigint not null
 );
 
 -- Last writer wins: an upsert carrying an older timestamp leaves the row alone.
@@ -79,36 +95,42 @@ create trigger settings_keep_newest
   before update on public.settings
   for each row execute function public.shakecast_keep_newest();
 
-alter table public.settings       enable row level security;
 alter table public.subscriptions  enable row level security;
 alter table public.episode_states enable row level security;
 alter table public.manual_skips   enable row level security;
+alter table public.settings       enable row level security;
 
-drop policy if exists "own sync key" on public.subscriptions;
-create policy "own sync key" on public.subscriptions
-  for all to anon
-  using      (sync_key = current_setting('request.headers', true)::json->>'x-sync-key')
-  with check (sync_key = current_setting('request.headers', true)::json->>'x-sync-key');
+drop policy if exists "own rows" on public.subscriptions;
+create policy "own rows" on public.subscriptions
+  for all to authenticated
+  using      (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
 
-drop policy if exists "own sync key" on public.episode_states;
-create policy "own sync key" on public.episode_states
-  for all to anon
-  using      (sync_key = current_setting('request.headers', true)::json->>'x-sync-key')
-  with check (sync_key = current_setting('request.headers', true)::json->>'x-sync-key');
+drop policy if exists "own rows" on public.episode_states;
+create policy "own rows" on public.episode_states
+  for all to authenticated
+  using      (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
 
-drop policy if exists "own sync key" on public.manual_skips;
-create policy "own sync key" on public.manual_skips
-  for all to anon
-  using      (sync_key = current_setting('request.headers', true)::json->>'x-sync-key')
-  with check (sync_key = current_setting('request.headers', true)::json->>'x-sync-key');
+drop policy if exists "own rows" on public.manual_skips;
+create policy "own rows" on public.manual_skips
+  for all to authenticated
+  using      (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
 
-drop policy if exists "own sync key" on public.settings;
-create policy "own sync key" on public.settings
-  for all to anon
-  using      (sync_key = current_setting('request.headers', true)::json->>'x-sync-key')
-  with check (sync_key = current_setting('request.headers', true)::json->>'x-sync-key');
+drop policy if exists "own rows" on public.settings;
+create policy "own rows" on public.settings
+  for all to authenticated
+  using      (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
 
-grant select, insert, update on public.settings       to anon;
-grant select, insert, update on public.subscriptions  to anon;
-grant select, insert, update on public.episode_states to anon;
-grant select, insert, update on public.manual_skips   to anon;
+-- The anon role, which the app never uses once signed in, sees nothing.
+revoke all on public.subscriptions  from anon;
+revoke all on public.episode_states from anon;
+revoke all on public.manual_skips   from anon;
+revoke all on public.settings       from anon;
+
+grant select, insert, update on public.subscriptions  to authenticated;
+grant select, insert, update on public.episode_states to authenticated;
+grant select, insert, update on public.manual_skips   to authenticated;
+grant select, insert, update on public.settings       to authenticated;

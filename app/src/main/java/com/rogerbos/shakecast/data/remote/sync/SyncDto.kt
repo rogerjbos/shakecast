@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 /** Row of the `subscriptions` table; `subscribed = false` is an unsubscribe tombstone. */
 @Serializable
 data class SubscriptionRow(
-    @SerialName("sync_key") val syncKey: String,
+    @SerialName("user_id") val userId: String,
     @SerialName("feed_url") val feedUrl: String,
     val title: String? = null,
     val author: String? = null,
@@ -18,10 +18,10 @@ data class SubscriptionRow(
     @SerialName("outro_skip_sec") val outroSkipSec: Int? = null
 )
 
-/** Row of the `settings` table: one JSON document of preferences per sync key. */
+/** Row of the `settings` table: one JSON document of preferences per user. */
 @Serializable
 data class SettingsRow(
-    @SerialName("sync_key") val syncKey: String,
+    @SerialName("user_id") val userId: String,
     val settings: String,
     @SerialName("updated_at_ms") val updatedAtMs: Long
 )
@@ -29,7 +29,7 @@ data class SettingsRow(
 /** Row of the `episode_states` table. */
 @Serializable
 data class EpisodeStateRow(
-    @SerialName("sync_key") val syncKey: String,
+    @SerialName("user_id") val userId: String,
     @SerialName("feed_url") val feedUrl: String,
     val guid: String,
     @SerialName("position_ms") val positionMs: Long,
@@ -41,7 +41,7 @@ data class EpisodeStateRow(
 /** Row of the `manual_skips` table; `deleted` marks a span the user chose to forget. */
 @Serializable
 data class ManualSkipRow(
-    @SerialName("sync_key") val syncKey: String,
+    @SerialName("user_id") val userId: String,
     @SerialName("feed_url") val feedUrl: String,
     val guid: String,
     @SerialName("start_ms") val startMs: Long,

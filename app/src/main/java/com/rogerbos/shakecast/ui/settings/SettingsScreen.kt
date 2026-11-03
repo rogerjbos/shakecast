@@ -35,6 +35,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -224,23 +228,37 @@ fun SettingsScreen(
                 placeholder = stringResource(R.string.settings_supabase_key_hint),
                 onCommit = { v -> viewModel.update { it.copy(supabaseKey = v) } }
             )
-            DebouncedTextField(
-                value = s.syncKey,
-                label = stringResource(R.string.settings_sync_key),
-                placeholder = stringResource(R.string.settings_sync_key_hint),
-                onCommit = { v -> viewModel.update { it.copy(syncKey = v) } }
-            )
+            val session = state.auth.session
+            if (session == null) {
+                SignInForm(
+                    enabled = !state.auth.busy && s.supabaseUrl.isNotBlank() && s.supabaseKey.isNotBlank(),
+                    onSignIn = viewModel::signIn,
+                    onSignUp = viewModel::signUp
+                )
+            } else {
+                Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(R.string.settings_signed_in_as, session.email),
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    OutlinedButton(onClick = viewModel::signOut, enabled = !state.auth.busy) { Text(stringResource(R.string.settings_sign_out)) }
+                }
+            }
+            when (val message = state.auth.message) {
+                AuthMessage.ConfirmEmail -> HelpText(stringResource(R.string.settings_auth_confirm_email))
+                is AuthMessage.Error -> HelpText(message.text)
+                null -> Unit
+            }
             Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                OutlinedButton(onClick = viewModel::generateSyncKey) { Text(stringResource(R.string.settings_sync_key_generate)) }
-                Spacer(Modifier.width(12.dp))
-                OutlinedButton(onClick = viewModel::testSync, enabled = s.supabaseUrl.isNotBlank() && s.supabaseKey.isNotBlank()) {
+                OutlinedButton(onClick = viewModel::testSync, enabled = session != null) {
                     Text(stringResource(R.string.settings_test_connection))
                 }
                 Spacer(Modifier.width(12.dp))
                 state.syncTestResult?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
             }
             Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Button(onClick = viewModel::syncNow, enabled = s.syncEnabled && !state.syncing) {
+                Button(onClick = viewModel::syncNow, enabled = s.syncEnabled && session != null && !state.syncing) {
                     Text(stringResource(if (state.syncing) R.string.settings_syncing else R.string.settings_sync_now))
                 }
                 Spacer(Modifier.width(16.dp))
@@ -260,14 +278,58 @@ private fun syncStatusText(status: SettingsRepository.SyncStatus): String = when
     else -> stringResource(R.string.settings_sync_status_never)
 }
 
-/** Text field that writes the trimmed value to settings 600 ms after typing stops. */
+/** Email and password entry; the password lives only in this composable and is never stored. */
+@Composable
+private fun SignInForm(enabled: Boolean, onSignIn: (String, String) -> Unit, onSignUp: (String, String) -> Unit) {
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    val ready = enabled && email.contains('@') && password.length >= 6
+    OutlinedTextField(
+        value = email,
+        onValueChange = { email = it },
+        label = { Text(stringResource(R.string.settings_auth_email)) },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+    )
+    OutlinedTextField(
+        value = password,
+        onValueChange = { password = it },
+        label = { Text(stringResource(R.string.settings_auth_password)) },
+        singleLine = true,
+        visualTransformation = PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+    )
+    Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Button(onClick = { onSignIn(email.trim(), password) }, enabled = ready) { Text(stringResource(R.string.settings_sign_in)) }
+        Spacer(Modifier.width(12.dp))
+        OutlinedButton(onClick = { onSignUp(email.trim(), password) }, enabled = ready) { Text(stringResource(R.string.settings_sign_up)) }
+    }
+    HelpText(stringResource(R.string.settings_auth_help))
+}
+
+/**
+ * Text field that writes the trimmed value to settings 600 ms after typing stops.
+ * The stored value only replaces what is on screen when it differs from the last
+ * commit, so a write landing mid-typing cannot drop characters.
+ */
 @Composable
 private fun DebouncedTextField(value: String, label: String, placeholder: String, onCommit: (String) -> Unit) {
-    var text by remember(value) { mutableStateOf(value) }
+    var text by remember { mutableStateOf(value) }
+    var lastCommitted by remember { mutableStateOf(value) }
+    LaunchedEffect(value) {
+        if (value != lastCommitted) {
+            lastCommitted = value
+            text = value
+        }
+    }
     LaunchedEffect(text) {
-        if (text.trim() != value) {
+        val trimmed = text.trim()
+        if (trimmed != lastCommitted) {
             delay(600)
-            onCommit(text.trim())
+            lastCommitted = trimmed
+            onCommit(trimmed)
         }
     }
     OutlinedTextField(

@@ -1,5 +1,6 @@
 package com.rogerbos.shakecast.data.sync
 
+import com.rogerbos.shakecast.data.auth.AuthManager
 import com.rogerbos.shakecast.data.db.EpisodeDao
 import com.rogerbos.shakecast.data.db.PodcastDao
 import com.rogerbos.shakecast.data.db.PodcastEntity
@@ -33,8 +34,8 @@ import javax.inject.Singleton
 data class RemotePosition(val episodeId: Long, val positionMs: Long)
 
 /**
- * Two-way sync with Supabase: push local changes, then pull every row for the
- * sync key and apply the ones that are newer than what this device has.
+ * Two-way sync with Supabase: push local changes, then pull every row of the
+ * signed-in user and apply the ones that are newer than what this device has.
  */
 @Singleton
 class SyncEngine @Inject constructor(
@@ -42,6 +43,7 @@ class SyncEngine @Inject constructor(
     private val episodeDao: EpisodeDao,
     private val syncDao: SyncDao,
     private val api: SupabaseSyncApi,
+    private val authManager: AuthManager,
     private val settingsRepository: SettingsRepository,
     private val podcastRepository: PodcastRepository,
     private val refreshFeeds: RefreshFeeds,
@@ -59,9 +61,8 @@ class SyncEngine @Inject constructor(
         mutex.withLock {
             val settings = settingsRepository.current()
             if (!settings.syncEnabled) return@withLock Result.success(Unit)
-            val config = SupabaseConfig(settings.supabaseUrl, settings.supabaseKey, settings.syncKey)
-            if (!config.isComplete) {
-                settingsRepository.recordSyncResult("Sync is not configured")
+            val config = authManager.config().getOrElse {
+                settingsRepository.recordSyncResult(it.message ?: it.javaClass.simpleName)
                 return@withLock Result.success(Unit)
             }
             runCatching {
@@ -86,7 +87,7 @@ class SyncEngine @Inject constructor(
         val tombstones = syncDao.tombstones()
         val rows = dirty.map { p ->
             SubscriptionRow(
-                syncKey = config.syncKey,
+                userId = config.userId,
                 feedUrl = p.feedUrl,
                 title = p.title,
                 author = p.author,
@@ -98,7 +99,7 @@ class SyncEngine @Inject constructor(
                 outroSkipSec = p.outroSkipSec
             )
         } + tombstones.map { t ->
-            SubscriptionRow(syncKey = config.syncKey, feedUrl = t.feedUrl, subscribed = false, updatedAtMs = t.deletedAtMs)
+            SubscriptionRow(userId = config.userId, feedUrl = t.feedUrl, subscribed = false, updatedAtMs = t.deletedAtMs)
         }
         if (rows.isEmpty()) return
         api.pushSubscriptions(config, rows).getOrThrow()
@@ -114,7 +115,7 @@ class SyncEngine @Inject constructor(
         val stamped = dirty.map { it to SyncDecisions.episodeStateTimestamp(it.stateUpdatedAtMs, it.lastPlayedAt, it.playedAt, now) }
         val rows = stamped.map { (e, ts) ->
             EpisodeStateRow(
-                syncKey = config.syncKey,
+                userId = config.userId,
                 feedUrl = e.feedUrl,
                 guid = e.guid,
                 positionMs = e.positionMs,
@@ -186,7 +187,7 @@ class SyncEngine @Inject constructor(
     private suspend fun syncManualSkips(config: SupabaseConfig) {
         val dirty = manualSkipRepository.dirty()
         if (dirty.isNotEmpty()) {
-            val rows = dirty.map { ManualSkipRow(config.syncKey, it.feedUrl, it.guid, it.startMs, it.endMs, it.deleted, it.updatedAtMs) }
+            val rows = dirty.map { ManualSkipRow(config.userId, it.feedUrl, it.guid, it.startMs, it.endMs, it.deleted, it.updatedAtMs) }
             api.pushManualSkips(config, rows).getOrThrow()
             for (skip in dirty) manualSkipRepository.clearDirty(skip.id, skip.updatedAtMs)
             Timber.d("Pushed %d manual skips", rows.size)
@@ -201,7 +202,7 @@ class SyncEngine @Inject constructor(
     private suspend fun syncSettings(config: SupabaseConfig) {
         val state = settingsRepository.syncState()
         if (state.dirty) {
-            val row = SettingsRow(config.syncKey, SettingsSync.toRemoteJson(settingsRepository.current()), state.updatedAtMs)
+            val row = SettingsRow(config.userId, SettingsSync.toRemoteJson(settingsRepository.current()), state.updatedAtMs)
             api.pushSettings(config, row).getOrThrow()
             settingsRepository.markSynced(state.updatedAtMs)
             Timber.d("Pushed settings")

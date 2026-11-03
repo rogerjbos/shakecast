@@ -124,6 +124,10 @@ interface EpisodeDao {
     @Query("UPDATE episodes SET syncDirty = 0 WHERE id = :id AND stateUpdatedAtMs <= :upToMs")
     suspend fun clearDirty(id: Long, upToMs: Long)
 
+    /** Re-publishes every play state, used after signing in to a new account. */
+    @Query("UPDATE episodes SET syncDirty = 1 WHERE positionMs > 0 OR isPlayed = 1 OR stateUpdatedAtMs > 0")
+    suspend fun markAllStatesDirty()
+
     @Query("UPDATE episodes SET downloadState = :state WHERE id = :id")
     suspend fun setDownloadState(id: Long, state: DownloadState)
 

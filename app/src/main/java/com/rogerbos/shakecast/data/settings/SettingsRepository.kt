@@ -39,7 +39,6 @@ class SettingsRepository @Inject constructor(
         val syncEnabled = booleanPreferencesKey("syncEnabled")
         val supabaseUrl = stringPreferencesKey("supabaseUrl")
         val supabaseKey = stringPreferencesKey("supabaseKey")
-        val syncKey = stringPreferencesKey("syncKey")
         val autoPlayNext = booleanPreferencesKey("autoPlayNext")
         val rememberManualSkips = booleanPreferencesKey("rememberManualSkips")
         val trimSilence = booleanPreferencesKey("trimSilence")
@@ -69,7 +68,6 @@ class SettingsRepository @Inject constructor(
             syncEnabled = p[Keys.syncEnabled] ?: d.syncEnabled,
             supabaseUrl = p[Keys.supabaseUrl] ?: d.supabaseUrl,
             supabaseKey = p[Keys.supabaseKey] ?: d.supabaseKey,
-            syncKey = p[Keys.syncKey] ?: d.syncKey,
             autoPlayNext = p[Keys.autoPlayNext] ?: d.autoPlayNext,
             rememberManualSkips = p[Keys.rememberManualSkips] ?: d.rememberManualSkips,
             trimSilence = p[Keys.trimSilence] ?: d.trimSilence,
@@ -103,6 +101,14 @@ class SettingsRepository @Inject constructor(
 
     suspend fun syncState(): SettingsSyncState = context.settingsStore.data.first().let { p ->
         SettingsSyncState(p[Keys.settingsUpdatedAtMs] ?: 0L, p[Keys.settingsDirty] ?: false)
+    }
+
+    /** Forces the next sync to push settings, used after signing in to a new account. */
+    suspend fun markDirty() {
+        context.settingsStore.edit { p ->
+            p[Keys.settingsUpdatedAtMs] = maxOf(p[Keys.settingsUpdatedAtMs] ?: 0L, System.currentTimeMillis())
+            p[Keys.settingsDirty] = true
+        }
     }
 
     suspend fun markSynced(upToMs: Long) {
@@ -147,7 +153,6 @@ class SettingsRepository @Inject constructor(
             p[Keys.syncEnabled] = next.syncEnabled
             p[Keys.supabaseUrl] = next.supabaseUrl
             p[Keys.supabaseKey] = next.supabaseKey
-            p[Keys.syncKey] = next.syncKey
             p[Keys.autoPlayNext] = next.autoPlayNext
             p[Keys.rememberManualSkips] = next.rememberManualSkips
             p[Keys.trimSilence] = next.trimSilence
