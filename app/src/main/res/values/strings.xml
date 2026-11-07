@@ -133,6 +133,7 @@
     <string name="search_added_feed">Subscribed to %1$s</string>
     <string name="settings_section_sync">Sync between phones</string>
     <string name="settings_sync_help">Keeps subscriptions, play positions, played episodes and settings in step across your phones through a Supabase project. Create the tables with supabase/schema.sql from the repo, enter the project URL and API key, then sign in with the same account on every phone.</string>
+    <string name="settings_sync_help_built_in">Keeps subscriptions, play positions, played episodes and settings in step across your phones. Create an account on the first phone, then sign in with it on the others. Everything stays on this phone until sync is on.</string>
     <string name="settings_sync_enabled">Sync enabled</string>
     <string name="settings_supabase_url">Supabase project URL</string>
     <string name="settings_supabase_url_hint">https://xyz.supabase.co</string>

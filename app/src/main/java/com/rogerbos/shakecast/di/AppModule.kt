@@ -26,7 +26,7 @@ annotation class IoDispatcher
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
-    private const val USER_AGENT = "Shakecast/0.1 (Android; +https://github.com/rogerbos/shakecast)"
+    private const val USER_AGENT = "Shakecast/0.1 (Android; +https://github.com/rogerjbos/shakecast)"
 
     @Provides
     @Singleton
@@ -34,6 +34,8 @@ object AppModule {
         ignoreUnknownKeys = true
         isLenient = true
         coerceInputValues = true
+        // Sync upserts rows in bulk; PostgREST requires every row to carry the same keys (PGRST102).
+        encodeDefaults = true
     }
 
     @Provides

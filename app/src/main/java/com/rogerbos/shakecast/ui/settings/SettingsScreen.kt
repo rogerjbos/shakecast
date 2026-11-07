@@ -13,6 +13,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.TextButton
 import com.rogerbos.shakecast.BuildConfig
+import com.rogerbos.shakecast.data.sync.SyncBackend
 import com.rogerbos.shakecast.data.crash.CrashReporting
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -217,24 +218,26 @@ fun SettingsScreen(
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             SectionHeader(stringResource(R.string.settings_section_sync))
             Text(
-                stringResource(R.string.settings_sync_help),
+                stringResource(if (SyncBackend.builtIn) R.string.settings_sync_help_built_in else R.string.settings_sync_help),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
             SwitchRow(stringResource(R.string.settings_sync_enabled), s.syncEnabled) { v -> viewModel.update { it.copy(syncEnabled = v) } }
-            DebouncedTextField(
-                value = s.supabaseUrl,
-                label = stringResource(R.string.settings_supabase_url),
-                placeholder = stringResource(R.string.settings_supabase_url_hint),
-                onCommit = { v -> viewModel.update { it.copy(supabaseUrl = v) } }
-            )
-            DebouncedTextField(
-                value = s.supabaseKey,
-                label = stringResource(R.string.settings_supabase_key),
-                placeholder = stringResource(R.string.settings_supabase_key_hint),
-                onCommit = { v -> viewModel.update { it.copy(supabaseKey = v) } }
-            )
+            if (!SyncBackend.builtIn) {
+                DebouncedTextField(
+                    value = s.supabaseUrl,
+                    label = stringResource(R.string.settings_supabase_url),
+                    placeholder = stringResource(R.string.settings_supabase_url_hint),
+                    onCommit = { v -> viewModel.update { it.copy(supabaseUrl = v) } }
+                )
+                DebouncedTextField(
+                    value = s.supabaseKey,
+                    label = stringResource(R.string.settings_supabase_key),
+                    placeholder = stringResource(R.string.settings_supabase_key_hint),
+                    onCommit = { v -> viewModel.update { it.copy(supabaseKey = v) } }
+                )
+            }
             val session = state.auth.session
             if (session == null) {
                 SignInForm(

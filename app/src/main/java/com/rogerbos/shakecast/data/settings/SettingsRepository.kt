@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.rogerbos.shakecast.data.sync.SyncBackend
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -67,8 +68,8 @@ class SettingsRepository @Inject constructor(
             autoDeleteWhenPlayed = p[Keys.autoDeleteWhenPlayed] ?: d.autoDeleteWhenPlayed,
             refreshIntervalHours = p[Keys.refreshIntervalHours] ?: d.refreshIntervalHours,
             syncEnabled = p[Keys.syncEnabled] ?: d.syncEnabled,
-            supabaseUrl = p[Keys.supabaseUrl] ?: d.supabaseUrl,
-            supabaseKey = p[Keys.supabaseKey] ?: d.supabaseKey,
+            supabaseUrl = if (SyncBackend.builtIn) SyncBackend.url else p[Keys.supabaseUrl] ?: d.supabaseUrl,
+            supabaseKey = if (SyncBackend.builtIn) SyncBackend.key else p[Keys.supabaseKey] ?: d.supabaseKey,
             autoPlayNext = p[Keys.autoPlayNext] ?: d.autoPlayNext,
             rememberManualSkips = p[Keys.rememberManualSkips] ?: d.rememberManualSkips,
             trimSilence = p[Keys.trimSilence] ?: d.trimSilence,

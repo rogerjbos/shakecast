@@ -37,9 +37,13 @@ Requires JDK 17 or 21 and Android SDK platform 36.
 ./gradlew testDebugUnitTest
 ```
 
-Release builds are shrunk by R8 (names are kept, since the code is public) and signed with the upload key described in [docs/RELEASE.md](docs/RELEASE.md), which also covers versioning, the Play listing, and opt-in crash reporting through Sentry. The privacy policy is in [PRIVACY.md](PRIVACY.md) and linked from Settings > About.
+Release builds are shrunk by R8 (names are kept, since the code is public) and signed with the upload key described in [docs/RELEASE.md](docs/RELEASE.md), which also covers versioning, publishing a release, and opt-in crash reporting through Sentry. The privacy policy is in [PRIVACY.md](PRIVACY.md) and linked from Settings > About.
 
 ## Install
+
+Download the latest `shakecast-<version>.apk` from the [Releases page](https://github.com/rogerjbos/shakecast/releases) on your phone and open it. Android asks once to allow installs from your browser or Files app; allow it, then tap Install. Later releases install over the top and keep your library. [Obtainium](https://github.com/ImranR98/Obtainium) can watch the Releases page and install updates for you. Android 10 or newer is required.
+
+To build and run from source:
 
 ```bash
 /Users/rogerjbos/Library/Android/sdk/platform-tools/adb devices -l
@@ -48,7 +52,7 @@ Release builds are shrunk by R8 (names are kept, since the code is public) and s
 
 ## Syncing between phones
 
-Subscriptions, play positions, played state, manual skips and settings can be kept in step across phones through a free [Supabase](https://supabase.com) project:
+Subscriptions, play positions, played state, manual skips and settings can be kept in step across phones through a free [Supabase](https://supabase.com) project. Store builds have a project baked in (see [docs/RELEASE.md](docs/RELEASE.md)), so users only create an account under Settings > Sync and sign in with it on their other phones. Builds without one show URL and key fields for your own project:
 
 1. Create a project, open the SQL editor and run `supabase/schema.sql`. Under Authentication > Providers make sure Email is enabled; turn off "Confirm email" if you would rather skip the confirmation step.
 2. In Settings > Sync on the first phone, enter the project URL (Project Settings > API) and the anon / publishable key, then tap **Create account** with an email and password.

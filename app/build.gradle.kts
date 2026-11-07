@@ -38,6 +38,9 @@ android {
         versionName = project.property("shakecast.versionName") as String
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "SENTRY_DSN", "\"${prop("shakecast.sentryDsn", "SHAKECAST_SENTRY_DSN") ?: ""}\"")
+        // Built-in sync backend. Blank values leave the Supabase fields in Settings for a self-hosted project.
+        buildConfigField("String", "SUPABASE_URL", "\"${prop("shakecast.supabaseUrl", "SHAKECAST_SUPABASE_URL")?.trim()?.trimEnd('/') ?: ""}\"")
+        buildConfigField("String", "SUPABASE_KEY", "\"${prop("shakecast.supabaseKey", "SHAKECAST_SUPABASE_KEY")?.trim() ?: ""}\"")
     }
 
     signingConfigs {

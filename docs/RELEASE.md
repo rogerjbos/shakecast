@@ -3,9 +3,9 @@
 ## One-time setup
 
 1. **Upload key.** Run `scripts/make-keystore.sh` from the repo root. It creates `shakecast-upload.jks` and `keystore.properties`, both gitignored. Back the `.jks` file up outside the repo. On another machine the same values can be supplied through `SHAKECAST_KEYSTORE`, `SHAKECAST_KEYSTORE_PASSWORD`, `SHAKECAST_KEY_ALIAS` and `SHAKECAST_KEY_PASSWORD`.
-2. **Play Console.** Create the app and enrol in Play App Signing. Upload the first bundle built with the key above; Play keeps the app signing key and your key becomes the upload key.
+2. **GitHub.** Releases are published with the [GitHub CLI](https://cli.github.com) (`gh auth login` once). The signing key above is the app's signing key for everyone who installs from GitHub, so if the app ever moves to Play, enrol in Play App Signing by uploading this same key as the app signing key; a Google-generated key would stop sideloaded installs from updating to the Play build.
 3. **Sentry (optional).** Create a Sentry project and put its DSN in `shakecast.sentryDsn` in `~/.gradle/gradle.properties` (the user-level file, not the tracked one in the repo) or in the `SHAKECAST_SENTRY_DSN` environment variable. Leave the tracked `gradle.properties` value blank so the DSN never lands in a commit. The switch in Settings > About only appears when the build carries a DSN. Stack traces stay readable without uploading mapping files because release builds keep names (`-dontobfuscate`); the mapping file is still written to `app/build/outputs/mapping/release/` if you later want it.
-4. **Supabase.** Rerun `supabase/schema.sql` on the project after upgrading; the in-app Delete account button calls a `delete_account` function it creates, and until then the button reports that the function is missing. For a public listing, the project URL and anon key should be baked into the build rather than typed by the user. Until then the Settings fields remain.
+4. **Supabase.** Put the project URL in `shakecast.supabaseUrl` and the publishable (anon) key in `shakecast.supabaseKey` in `~/.gradle/gradle.properties`, or in the `SHAKECAST_SUPABASE_URL` and `SHAKECAST_SUPABASE_KEY` environment variables. Builds that carry both hide the URL and key fields in Settings and send every user to that project, so they only create an account. The key is public by design; row level security keeps each user to their own rows. Leave the tracked `gradle.properties` values blank so forks stay self-hosted. Rerun `supabase/schema.sql` on the project after upgrading; the in-app Delete account button calls a `delete_account` function it creates, and until then the button reports that the function is missing.
 
 ## Every release
 
@@ -13,14 +13,29 @@
 2. Build and test:
 
    ```bash
-   JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home ./gradlew testDebugUnitTest bundleRelease
+   JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home ./gradlew testDebugUnitTest lintRelease assembleRelease
    ```
 
-   The bundle is at `app/build/outputs/bundle/release/app-release.aab`. For a signed APK to sideload on a phone use `assembleRelease` and `app/build/outputs/apk/release/app-release.apk`.
+   The signed APK is at `app/build/outputs/apk/release/app-release.apk`. (Play would want `bundleRelease` and the `.aab` instead.)
 3. Install the release APK on a real phone and run through: search and subscribe, download, play with the screen off, shake, notification buttons, sign in and sync, OPML export. R8 only runs in release builds, so this is the first time shrinking is exercised.
-4. Upload the bundle to a Play testing track, then promote.
 
-## Play listing requirements
+   ```bash
+   ~/Library/Android/sdk/platform-tools/adb -d install -r app/build/outputs/apk/release/app-release.apk
+   ```
+
+4. Commit, tag and publish the release with the APK attached:
+
+   ```bash
+   git tag v1.2.3 && git push origin main v1.2.3
+   cp app/build/outputs/apk/release/app-release.apk shakecast-1.2.3.apk
+   gh release create v1.2.3 shakecast-1.2.3.apk --title "Shakecast 1.2.3" --notes "What changed..."
+   ```
+
+   Phones with an earlier release install the new APK over the top because the signing key is the same.
+
+## Play listing (if the app ever goes to Play)
+
+New individual developer accounts must run a closed test with at least 12 testers for 14 days before production access is granted. The rest of what the listing needs:
 
 - **Privacy policy URL:** `https://github.com/rogerjbos/shakecast/blob/main/PRIVACY.md` (also linked from Settings > About).
 - **Account deletion:** the app has in-app deletion under Settings > Sync > Delete account. Play also asks for a web URL describing how to delete an account; the privacy policy's "Deleting your account" section serves, so give the same URL.
